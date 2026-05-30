@@ -21,6 +21,7 @@ Usage: playwright-debug <command> [ARGS]
 Commands:
   run <js_script>    Run a Playwright script (default if no command given)
   install [<dir>]    Install skill SKILL.md to a directory (or use --cursor)
+  skill show         Show the content of SKILL.md
 
 The run command wraps your script with browser setup. You get:
   - browser  (Chromium instance)
@@ -62,9 +63,19 @@ func handle(args []string) error {
 			return fmt.Errorf("run requires a JavaScript script argument")
 		}
 		return handleRun(args[1])
+	case "skill":
+		return handleSkill(args[1:])
 	default:
 		return handleRun(strings.Join(args, " "))
 	}
+}
+
+func handleSkill(args []string) error {
+	if len(args) == 0 || args[0] != "show" {
+		return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+	}
+	fmt.Print(skillTemplate)
+	return nil
 }
 
 func handleInstall(args []string) error {

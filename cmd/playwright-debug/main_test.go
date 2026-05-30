@@ -84,6 +84,38 @@ func TestHandleRunHelpInArgs(t *testing.T) {
 	}
 }
 
+func TestHandleSkillShow(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handle([]string{"skill", "show"})
+	})
+	if err != nil {
+		t.Fatalf("handle(skill show): %v", err)
+	}
+	if !strings.Contains(output, "playwright-debug") {
+		t.Errorf("skill show output missing skill name: %s", output)
+	}
+}
+
+func TestHandleSkillUnknown(t *testing.T) {
+	err := handle([]string{"skill", "unknown"})
+	if err == nil {
+		t.Fatal("expected error for unknown skill sub-command")
+	}
+	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestHandleSkillNoSubcommand(t *testing.T) {
+	err := handle([]string{"skill"})
+	if err == nil {
+		t.Fatal("expected error for skill without sub-command")
+	}
+	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
 func captureStdout(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
 	oldStdout := os.Stdout

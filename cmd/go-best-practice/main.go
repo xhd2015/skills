@@ -21,12 +21,13 @@ var topicsFS embed.FS
 
 const topicsDir = "topics"
 
-const help = `
+	const help = `
 Usage: go-best-practice <command> [ARGS]
        go-best-practice <topic>[/<sub-topic>[/...]]
 
 Commands:
   install [<dir>]    Install SKILL.md + topics to a directory (or use --cursor)
+  skill show         Show the content of SKILL.md
   topics             List all available top-level topics
   <topic-path>       Print the detailed content for a topic or sub-topic
 
@@ -60,6 +61,8 @@ func handle(args []string) error {
 		return handleInstall(args[1:])
 	case "topics", "list":
 		return printTopicIndex()
+	case "skill":
+		return handleSkill(args[1:])
 	}
 
 	content, ok, err := readTopic(args[0])
@@ -158,6 +161,14 @@ func validateSegments(segments []string) error {
 			return fmt.Errorf("invalid topic path segment: %q", s)
 		}
 	}
+	return nil
+}
+
+func handleSkill(args []string) error {
+	if len(args) == 0 || args[0] != "show" {
+		return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+	}
+	fmt.Print(skillTemplate)
 	return nil
 }
 
