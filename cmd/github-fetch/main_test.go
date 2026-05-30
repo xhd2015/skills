@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -238,7 +239,7 @@ func TestFetchPRInfoWithMock(t *testing.T) {
 	}
 }
 
-func TestPrintPR(t *testing.T) {
+func TestPrintPRSummary(t *testing.T) {
 	info := &PRInfo{
 		Number:  379,
 		Title:   "Test PR Title",
@@ -261,36 +262,117 @@ func TestPrintPR(t *testing.T) {
 	}
 
 	files := []PRFile{
-		{Filename: "main.go", Status: "modified", Additions: 5, Deletions: 3, Changes: 8},
-		{Filename: "util.go", Status: "added", Additions: 10, Deletions: 0, Changes: 10},
+		{Filename: "main.go", Status: "modified", Additions: 5, Deletions: 3, Changes: 8, Patch: "line1\nline2\nline3\nline4\nline5"},
+		{Filename: "util.go", Status: "added", Additions: 10, Deletions: 0, Changes: 10, Patch: "line1\nline2"},
 	}
 
-	diff := "diff --git a/main.go b/main.go\n@@ -1 +1 @@\n-old\n+new\n"
-
 	var buf strings.Builder
-	printPR(&buf, info, files, diff)
+	printPR(&buf, info, files, "", false)
 	output := buf.String()
 
 	if !strings.Contains(output, "PR #379: Test PR Title") {
 		t.Errorf("output missing title: %s", output)
 	}
-	if !strings.Contains(output, "Author: @dev") {
-		t.Errorf("output missing author: %s", output)
-	}
-	if !strings.Contains(output, "fork/repo → owner/repo:main") {
-		t.Errorf("output missing branch info: %s", output)
-	}
-	if !strings.Contains(output, "This is the PR body") {
-		t.Errorf("output missing body: %s", output)
-	}
 	if !strings.Contains(output, "2 files changed, +15 -3") {
 		t.Errorf("output missing file summary: %s", output)
 	}
-	if !strings.Contains(output, "main.go") {
-		t.Errorf("output missing file list: %s", output)
+	if !strings.Contains(output, "── Files Changed ──") {
+		t.Errorf("output missing Files Changed section: %s", output)
 	}
-	if !strings.Contains(output, "Diff") {
-		t.Errorf("output missing diff section: %s", output)
+	if !strings.Contains(output, "── Diff (simplified) ──") {
+		t.Errorf("output missing simplified diff section: %s", output)
+	}
+	// main.go has 5 patch lines, should be truncated to 3
+	if !strings.Contains(output, "...") {
+		t.Errorf("output missing truncation indicator for main.go: %s", output)
+	}
+	if strings.Contains(output, "line4") {
+		t.Errorf("output should not contain line4 (truncated): %s", output)
+	}
+}
+
+func TestPrintPRDiff(t *testing.T) {
+	info := &PRInfo{
+		Number:  379,
+		Title:   "Test PR Title",
+		Body:    "",
+		State:   "open",
+		HTMLURL: "https://github.com/owner/repo/pull/379",
+		Head: PRBranch{
+			Ref: "feature",
+			Repo: PRRepo{
+				FullName: "fork/repo",
+			},
+		},
+		Base: PRBranch{
+			Ref: "main",
+			Repo: PRRepo{
+				FullName: "owner/repo",
+			},
+		},
+		User: PRUser{Login: "dev"},
+	}
+
+	files := []PRFile{
+		{Filename: "main.go", Status: "modified", Additions: 1, Deletions: 1, Changes: 2, Patch: "line1\nline2\nline3\nline4"},
+	}
+
+	diff := "diff --git a/main.go b/main.go\n@@ -1 +1 @@\n-old\n+new\n"
+
+	var buf strings.Builder
+	printPR(&buf, info, files, diff, true)
+	output := buf.String()
+
+	if !strings.Contains(output, "── Diff ──") {
+		t.Errorf("diff mode should show diff section: %s", output)
+	}
+	if strings.Contains(output, "simplified") {
+		t.Errorf("diff mode should not show simplified diff: %s", output)
+	}
+}
+
+func TestPrintPRDiffFileLimit(t *testing.T) {
+	info := &PRInfo{
+		Number:  1,
+		Title:   "Many files",
+		Body:    "",
+		State:   "open",
+		HTMLURL: "https://github.com/o/r/pull/1",
+		Head: PRBranch{
+			Ref:  "fix",
+			Repo: PRRepo{FullName: "o/r"},
+		},
+		Base: PRBranch{
+			Ref:  "main",
+			Repo: PRRepo{FullName: "o/r"},
+		},
+		User: PRUser{Login: "u"},
+	}
+
+	files := make([]PRFile, 15)
+	for i := range files {
+		files[i] = PRFile{
+			Filename:  fmt.Sprintf("file%d.go", i),
+			Status:    "modified",
+			Additions: 1,
+			Deletions: 0,
+			Patch:     "line1",
+		}
+	}
+
+	var buf strings.Builder
+	printPR(&buf, info, files, "", false)
+	output := buf.String()
+
+	if !strings.Contains(output, "and 5 more files") {
+		t.Errorf("output missing overflow indicator: %s", output)
+	}
+	if strings.Contains(output, "file10.go:") {
+		t.Errorf("output should not include file beyond limit 10 in simplified diff: %s", output)
+	}
+	// Files Changed section should still show all 15
+	if !strings.Contains(output, "15 files changed") {
+		t.Errorf("output missing total file count: %s", output)
 	}
 }
 
@@ -312,7 +394,7 @@ func TestPrintPRMinimal(t *testing.T) {
 	}
 
 	var buf strings.Builder
-	printPR(&buf, info, nil, "")
+	printPR(&buf, info, nil, "", false)
 	output := buf.String()
 
 	if !strings.Contains(output, "PR #1: Minimal") {

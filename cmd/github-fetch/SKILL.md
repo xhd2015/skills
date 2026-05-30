@@ -14,11 +14,12 @@ A CLI tool for fetching GitHub PR content and managing PR worktrees.
 
 ### pr — Fetch and display PR content
 
-Fetches PR metadata and diff from GitHub and prints a human-readable summary.
+Fetches PR metadata from GitHub and prints a human-readable summary. By default the diff section shows up to 10 files with 3 lines each. Use `--diff` for the full diff.
 
 ```bash
 github-fetch pr https://github.com/xhd2015/xgo/pull/379
-github-fetch pr 379    # auto-detect owner/repo from git remote
+github-fetch pr 379                       # auto-detect owner/repo from git remote
+github-fetch pr --diff 379                # show full diff
 ```
 
 ### work-on — Create a git worktree for a PR

@@ -15,7 +15,7 @@ const help = `
 Usage: github-fetch <command> [ARGS]
 
 Commands:
-  pr <url-or-number>            Fetch and display PR content
+  pr [--diff] <url-or-number>   Fetch and display PR content
   work-on <url-or-number>       Create a git worktree for the PR
   push [<url-or-number>] [-f]   Push current HEAD to the PR's source branch
   skill show                    Show the content of SKILL.md
@@ -26,7 +26,7 @@ the current git repository's origin URL to construct the full PR URL.
 
 Examples:
   github-fetch pr https://github.com/xhd2015/xgo/pull/379
-  github-fetch pr 379
+  github-fetch pr --diff 379
   github-fetch work-on 379
   github-fetch push -f
   github-fetch skill install --cursor
