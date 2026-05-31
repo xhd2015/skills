@@ -7,7 +7,7 @@ multiple aliases per flag, and a built-in `--help` path).
 Install:
 
 ```bash
-go get github.com/xhd2015/less-gen/flags@latest
+go get github.com/xhd2015/less-flags@latest
 ```
 
 Example:
@@ -20,7 +20,7 @@ import (
     "os"
     "time"
 
-    "github.com/xhd2015/less-gen/flags"
+    "github.com/xhd2015/less-flags"
 )
 
 const help = `
@@ -38,7 +38,7 @@ func main() {
     var timeout time.Duration
     var files []string
 
-    remainArgs, err := flags.Duration("--timeout", &timeout).
+    remainArgs, err := lessflags.Duration("--timeout", &timeout).
         StringSlice("--file", &files).
         Bool("-v,--verbose", &verbose).
         Help("-h,--help", help).
@@ -59,22 +59,22 @@ func main() {
 
 - `Help("-h,--help", helpText)` — prints `helpText` and exits 0.
 - `HelpFunc("-h,--help", fn)` — calls `fn` and exits 0.
-- `HelpNoExit()` — do not exit on help; `Parse` returns `flags.ErrHelp`.
+- `HelpNoExit()` — do not exit on help; `Parse` returns `lessflags.ErrHelp`.
 
 ## Multiple flag names
 
 Comma-separate aliases in the name string:
 
 ```go
-flags.Bool("-v,--verbose", &verbose)
-flags.String("-o,--output", &output)
+lessflags.Bool("-v,--verbose", &verbose)
+lessflags.String("-o,--output", &output)
 ```
 
 ## Sub-topics
 
 - `flags-parsing/types` — the full list of supported target types
   (`*bool`, `*string`, `*int`/`*int64`, `*time.Duration`, `*[]string`,
-  and their `**T` variants), plus how to detect "unset" flags.
+  and their `**T` variants), plus how to detect "unset" lessflags.
 - `flags-parsing/subcommand` — sub-command dispatcher pattern using
   `StopOnFirstArg`.
 

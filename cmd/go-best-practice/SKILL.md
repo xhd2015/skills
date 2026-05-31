@@ -22,7 +22,7 @@ tree; address a sub-topic with a slash-separated path, e.g.
   `github.com/xhd2015/xgo/support/cmd` (Debug mode, output capture,
   env vars, directory, I/O redirect)
 - `flags-parsing` — CLI flag parsing with
-  `github.com/xhd2015/less-gen/flags`
+  `github.com/xhd2015/less-flags`
   - `types` — supported target types (`*bool`, `*string`, `*int`,
     `*time.Duration`, `*[]string`, and `**T` variants)
   - `subcommand` — sub-command dispatcher patterns (with `StopOnFirstArg` and no-toplevel-flags variants)

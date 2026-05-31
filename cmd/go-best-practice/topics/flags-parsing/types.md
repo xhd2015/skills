@@ -16,7 +16,7 @@ supported (the `**T` form lets the caller distinguish "unset" from
 
 ```go
 var timeout *time.Duration
-remain, err := flags.Duration("--timeout", &timeout).Parse(os.Args[1:])
+remain, err := lessflags.Duration("--timeout", &timeout).Parse(os.Args[1:])
 if err != nil { /* ... */ }
 if timeout == nil {
     // --timeout was not provided

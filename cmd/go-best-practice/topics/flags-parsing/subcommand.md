@@ -2,7 +2,7 @@
 
 Use `StopOnFirstArg()` so top-level flags stop parsing at the first
 positional argument. The remainder can then be dispatched to a
-sub-command handler, which runs its own `flags.Parse` over its own
+sub-command handler, which runs its own `lessflags.Parse` over its own
 option set.
 
 ```go
@@ -12,7 +12,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/xhd2015/less-gen/flags"
+    "github.com/xhd2015/less-flags"
 )
 
 const topHelp = `
@@ -36,7 +36,7 @@ func main() {
 
 func run(args []string) error {
     var debug bool
-    args, err := flags.Bool("--debug", &debug).
+    args, err := lessflags.Bool("--debug", &debug).
         Help("-h,--help", topHelp).
         StopOnFirstArg().
         Parse(args)
@@ -60,7 +60,7 @@ func run(args []string) error {
 
 func handleInstall(args []string) error {
     var force bool
-    args, err := flags.Bool("--force", &force).
+    args, err := lessflags.Bool("--force", &force).
         Help("-h,--help", `
 Usage: install [--force] <dir>
 `).Parse(args)
@@ -85,9 +85,9 @@ func handleRun(args []string) error {
 
 ## No toplevel flags
 
-When the toplevel itself has no flags, skip `flags.Parse` entirely.
+When the toplevel itself has no flags, skip `lessflags.Parse` entirely.
 Just check the first arg, manually handle `-h`/`--help`, and
-dispatch. Each sub-command parses its own flags.
+dispatch. Each sub-command parses its own lessflags.
 
 ```go
 package main
@@ -97,7 +97,7 @@ import (
     "os"
     "strings"
 
-    "github.com/xhd2015/less-gen/flags"
+    "github.com/xhd2015/less-flags"
 )
 
 const topHelp = `
@@ -147,7 +147,7 @@ Options:
 func handleInstall(args []string) error {
     var dirFlag *string
     var dryRun bool
-    _, err := flags.String("--dir", &dirFlag).
+    _, err := lessflags.String("--dir", &dirFlag).
         Bool("--dry-run", &dryRun).
         Help("-h,--help", installHelp).
         Parse(args)
@@ -171,7 +171,7 @@ func handleInstall(args []string) error {
 
 func handleClean(args []string) error {
     var dirFlag *string
-    _, err := flags.String("--dir", &dirFlag).
+    _, err := lessflags.String("--dir", &dirFlag).
         Help("-h,--help", `
 Usage: mytool clean [--dir DIR]
 `).Parse(args)
@@ -194,9 +194,9 @@ Usage: mytool clean [--dir DIR]
 - Without `StopOnFirstArg()`, `flags` would try to interpret
   sub-command flags (e.g. `--force` after `install`) against the
   top-level spec and fail with `unrecognized flag`.
-- When the toplevel has **no** flags, skip `flags.Parse` entirely
+- When the toplevel has **no** flags, skip `lessflags.Parse` entirely
   at the toplevel. Just check `args[0]` for `-h`/`--help` and
   dispatch raw args to sub-commands.
-- Each handler can reuse `flags.Help(...)` for its own `--help`.
+- Each handler can reuse `lessflags.Help(...)` for its own `--help`.
 - See the `flags-parsing/types` sub-topic for the full list of
   supported target types.
