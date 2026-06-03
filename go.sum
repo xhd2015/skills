@@ -1,12 +1,9 @@
-<<<<<<< HEAD
 github.com/xhd2015/less-flags v1.0.0 h1:ay8YG0WSXn59CAwBYUcAsq7l+mUwDEMUqaW/Fy0ZoCM=
 github.com/xhd2015/less-flags v1.0.0/go.mod h1:HGGM7JrrfZm/RvmxBQT96jF916m9UQE8vELpejQaoIo=
-=======
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/xhd2015/dot-pkgs/go-pkgs v0.0.9 h1:ta6fTEy0ZuWWdxejcT3NPHS1XGE9GzTGTK50c1Cy0H0=
 github.com/xhd2015/dot-pkgs/go-pkgs v0.0.9/go.mod h1:FOoQyvkfqYifiBzqkfDTIjiNZSYHtoVB92fDvCvIC78=
->>>>>>> 216f6bd (add vet command for best-practice checks)
 github.com/xhd2015/less-gen v0.0.19 h1:JllrPhx3HzN+f2AB6cTvW9aRCpvuODJFx7affpa0zQY=
 github.com/xhd2015/less-gen v0.0.19/go.mod h1:Ym5HW/yfVnf2mgSo48QsuHAKnMTPv/u7oqty+raTnTQ=
 golang.org/x/mod v0.36.0 h1:JJjpVx6myfUsUdAzZuOSTTmRE0PfZeNWzzvKrP7amb4=

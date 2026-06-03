@@ -2,8 +2,6 @@ module github.com/xhd2015/skills
 
 go 1.25.0
 
-toolchain go1.25.11
-
 require github.com/xhd2015/less-gen v0.0.19
 
 require (
