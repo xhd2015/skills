@@ -29,6 +29,7 @@ Commands:
   install [<dir>]    Install SKILL.md + topics to a directory (or use --cursor)
   skill show         Show the content of SKILL.md
   topics             List all available top-level topics
+  vet [flags] [dirs] Check codebase for best-practice violations
   <topic-path>       Print the detailed content for a topic or sub-topic
 
 Topics are organized hierarchically. Address a nested topic with a
@@ -63,6 +64,8 @@ func handle(args []string) error {
 		return printTopicIndex()
 	case "skill":
 		return handleSkill(args[1:])
+	case "vet":
+		return handleVet(args[1:])
 	}
 
 	content, ok, err := readTopic(args[0])
