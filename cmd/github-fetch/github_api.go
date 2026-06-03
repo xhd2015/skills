@@ -398,8 +398,8 @@ type githubWorkflowJob struct {
 	CompletedAt string `json:"completed_at"`
 }
 
-func fetchWorkflowRuns(owner, repo, headSHA string) ([]WorkflowRun, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs?head_sha=%s&per_page=20", owner, repo, headSHA)
+func fetchWorkflowRuns(owner, repo, headBranch string) ([]WorkflowRun, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs?branch=%s&event=pull_request&per_page=20", owner, repo, headBranch)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -446,6 +446,30 @@ func fetchWorkflowRunJobs(owner, repo string, runID int64) ([]WorkflowJob, error
 		}
 	}
 	return result, nil
+}
+
+type githubContentsFile struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+func fetchWorkflowFiles(owner, repo string) ([]string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/.github/workflows", owner, repo)
+	data, err := apiGet(url)
+	if err != nil {
+		return nil, err
+	}
+	var files []githubContentsFile
+	if err := json.Unmarshal(data, &files); err != nil {
+		return nil, fmt.Errorf("parse workflow files response: %w", err)
+	}
+	names := make([]string, 0, len(files))
+	for _, f := range files {
+		if strings.HasSuffix(f.Name, ".yml") || strings.HasSuffix(f.Name, ".yaml") {
+			names = append(names, f.Name)
+		}
+	}
+	return names, nil
 }
 
 func fetchJobLogs(owner, repo string, jobID int64) (string, error) {

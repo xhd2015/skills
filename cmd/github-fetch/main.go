@@ -17,6 +17,7 @@ Usage: github-fetch <command> [ARGS]
 Commands:
   pr [--diff] [--logs] [--workflow <name>] <url-or-number>  Fetch and display PR content
   ci [--logs] [--workflow <name>] [--run-id <id>] [--job <name>] <url>  Show CI workflow runs and logs
+  yaml validate <path>                  Validate a GitHub Actions workflow file
   work-on <url-or-number>              Create a git worktree for the PR
   push [<url-or-number>] [-f]          Push current HEAD to the PR's source branch
   skill show                           Show the content of SKILL.md
@@ -60,6 +61,8 @@ func handle(args []string) error {
 		return handleFetchPR(args[1:])
 	case "ci", "checks":
 		return handleCI(args[1:])
+	case "yaml":
+		return handleYAML(args[1:])
 	case "work-on":
 		return handleWorkon(args[1:])
 	case "push":

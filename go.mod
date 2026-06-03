@@ -3,3 +3,5 @@ module github.com/xhd2015/skills
 go 1.24.11
 
 require github.com/xhd2015/less-gen v0.0.19
+
+require gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -1300,16 +1300,223 @@ func TestPrLogsSkipsPRDisplay(t *testing.T) {
 	os.Chdir(dir)
 	defer os.Chdir(oldDir)
 
-	// When --logs is used with a PR number, it should delegate to ci immediately
-	// without trying to show PR info (which would fail without API)
-	// The error should be from the ci path (fetching PR info for CI), not from pr
 	err := handleFetchPR([]string{"--logs", "https://github.com/testowner/testrepo/pull/42"})
 	if err == nil {
 		return
 	}
-	// The error should come from ci (fetch workflow runs), not from pr display
 	if strings.Contains(err.Error(), "fetch PR files") {
 		t.Errorf("pr --logs should skip PR display, but got PR file fetch error: %v", err)
+	}
+}
+
+func TestHandleYAMLNoSubcommand(t *testing.T) {
+	err := handleYAML(nil)
+	if err == nil {
+		t.Fatal("expected error for yaml without subcommand")
+	}
+	if !strings.Contains(err.Error(), "requires a subcommand") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleYAMLUnknownSubcommand(t *testing.T) {
+	err := handleYAML([]string{"unknown"})
+	if err == nil {
+		t.Fatal("expected error for unknown yaml subcommand")
+	}
+	if !strings.Contains(err.Error(), "unknown yaml subcommand") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleYAMLValidateNoPath(t *testing.T) {
+	err := handleYAMLValidate([]string{})
+	if err == nil {
+		t.Fatal("expected error for validate without path")
+	}
+	if !strings.Contains(err.Error(), "requires a file path") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleYAMLValidateHelp(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleYAMLValidate([]string{"-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleYAMLValidate(-h): %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("help missing Usage: %s", output)
+	}
+}
+
+func TestLocalValidateYAMLValid(t *testing.T) {
+	content := `name: Build
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`
+	output, err := captureStdout(t, func() error {
+		return localValidateYAML("test.yml", content)
+	})
+	if err != nil {
+		t.Fatalf("localValidateYAML: %v", err)
+	}
+	if !strings.Contains(output, "OK") {
+		t.Errorf("expected OK for valid yaml: %s", output)
+	}
+}
+
+func TestLocalValidateYAMLMissingOn(t *testing.T) {
+	content := `name: Build
+jobs:
+  build:
+    runs-on: ubuntu-latest
+`
+	output, err := captureStdout(t, func() error {
+		return localValidateYAML("test.yml", content)
+	})
+	if err != nil {
+		t.Fatalf("localValidateYAML: %v", err)
+	}
+	if !strings.Contains(output, "missing `on:") {
+		t.Errorf("expected missing on: warning: %s", output)
+	}
+}
+
+func TestLocalValidateYAMLMissingJobs(t *testing.T) {
+	content := `name: Build
+on:
+  push:
+    branches: [main]
+`
+	output, err := captureStdout(t, func() error {
+		return localValidateYAML("test.yml", content)
+	})
+	if err != nil {
+		t.Fatalf("localValidateYAML: %v", err)
+	}
+	if !strings.Contains(output, "missing `jobs:") {
+		t.Errorf("expected missing jobs: warning: %s", output)
+	}
+}
+
+func TestLocalValidateYAMLMissingBoth(t *testing.T) {
+	content := `name: Build
+`
+	output, err := captureStdout(t, func() error {
+		return localValidateYAML("test.yml", content)
+	})
+	if err != nil {
+		t.Fatalf("localValidateYAML: %v", err)
+	}
+	if !strings.Contains(output, "missing `on:") {
+		t.Errorf("expected missing on: warning: %s", output)
+	}
+	if !strings.Contains(output, "missing `jobs:") {
+		t.Errorf("expected missing jobs: warning: %s", output)
+	}
+}
+
+func TestValidateWorkflowFileNotFound(t *testing.T) {
+	err := validateWorkflowFile("/nonexistent/path/workflow.yml")
+	if err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+	if !strings.Contains(err.Error(), "file not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateWorkflowFileValid(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "test.yml")
+	content := `name: Build
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	output, err := captureStdout(t, func() error {
+		return validateWorkflowFile(filePath)
+	})
+	if err != nil {
+		t.Fatalf("validateWorkflowFile: %v", err)
+	}
+	if !strings.Contains(output, "OK") {
+		t.Errorf("expected OK: %s", output)
+	}
+}
+
+func TestYAMLHelpText(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleYAML([]string{"-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleYAML(-h): %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("yaml help missing Usage: %s", output)
+	}
+	if !strings.Contains(output, "validate") {
+		t.Errorf("yaml help missing validate: %s", output)
+	}
+}
+
+func TestLocalValidateYAMLSyntaxError(t *testing.T) {
+	content := `name: Build
+on:
+  push
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+`
+	output, err := captureStdout(t, func() error {
+		return localValidateYAML("test.yml", content)
+	})
+	if err != nil {
+		t.Fatalf("localValidateYAML: %v", err)
+	}
+	if !strings.Contains(output, "YAML syntax error") {
+		t.Errorf("expected YAML syntax error: %s", output)
+	}
+}
+
+func TestLocalValidateYAMLOKBadge(t *testing.T) {
+	content := `name: Build
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+`
+	output, err := captureStdout(t, func() error {
+		return localValidateYAML("test.yml", content)
+	})
+	if err != nil {
+		t.Fatalf("localValidateYAML: %v", err)
+	}
+	if !strings.Contains(output, "OK") {
+		t.Errorf("expected OK for valid yaml: %s", output)
+	}
+	if !strings.Contains(output, "valid YAML") {
+		t.Errorf("expected valid YAML message: %s", output)
 	}
 }
 

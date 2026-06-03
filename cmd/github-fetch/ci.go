@@ -75,9 +75,22 @@ func handleCI(args []string) error {
 		return fmt.Errorf("fetch PR #%s: %w", number, err)
 	}
 
-	runs, err := fetchWorkflowRuns(owner, repo, info.Head.SHA)
+	runs, err := fetchWorkflowRuns(owner, repo, info.Head.Ref)
 	if err != nil {
 		return fmt.Errorf("fetch workflow runs: %w", err)
+	}
+
+	if len(runs) == 0 {
+		msg := "no workflow runs found for this PR"
+		if wfFiles, err := fetchWorkflowFiles(owner, repo); err == nil && len(wfFiles) > 0 {
+			quoted := make([]string, len(wfFiles))
+			for i, f := range wfFiles {
+				quoted[i] = ".github/workflows/" + f
+			}
+			msg += fmt.Sprintf("\nWorkflow files in repo: %s", strings.Join(quoted, ", "))
+			msg += fmt.Sprintf("\n(check for syntax errors: github-fetch yaml validate .github/workflows/%s)", wfFiles[0])
+		}
+		return fmt.Errorf("%s", msg)
 	}
 
 	if workflowFilter != "" {
