@@ -15,11 +15,14 @@ const help = `
 Usage: github-fetch <command> [ARGS]
 
 Commands:
-  pr [--diff] <url-or-number>   Fetch and display PR content
-  work-on <url-or-number>       Create a git worktree for the PR
-  push [<url-or-number>] [-f]   Push current HEAD to the PR's source branch
-  skill show                    Show the content of SKILL.md
-  skill install [<dir>]         Install skill SKILL.md to a directory
+  pr [--diff] [--logs] [--workflow <name>] <url-or-number>  Fetch and display PR content
+  ci [--logs] [--workflow <name>] [--run-id <id>] [--job <name>] <url>  Show CI workflow runs and logs
+  work-on <url-or-number>              Create a git worktree for the PR
+  push [<url-or-number>] [-f]          Push current HEAD to the PR's source branch
+  skill show                           Show the content of SKILL.md
+  skill install [<dir>]                Install skill SKILL.md to a directory
+
+<url> can be a PR URL, Actions run URL, or Actions job URL.
 
 When <url-or-number> is just a number (e.g. 379), the tool auto-detects
 the current git repository's origin URL to construct the full PR URL.
@@ -27,6 +30,10 @@ the current git repository's origin URL to construct the full PR URL.
 Examples:
   github-fetch pr https://github.com/xhd2015/xgo/pull/379
   github-fetch pr --diff 379
+  github-fetch ci 379
+  github-fetch ci --logs 379
+  github-fetch ci --logs https://github.com/xhd2015/xgo/actions/runs/26795086426/job/78989577716
+  github-fetch pr --logs https://github.com/xhd2015/xgo/actions/runs/26795086426/job/78989577716
   github-fetch work-on 379
   github-fetch push -f
   github-fetch skill install --cursor
@@ -51,6 +58,8 @@ func handle(args []string) error {
 	switch args[0] {
 	case "pr", "fetch":
 		return handleFetchPR(args[1:])
+	case "ci", "checks":
+		return handleCI(args[1:])
 	case "work-on":
 		return handleWorkon(args[1:])
 	case "push":

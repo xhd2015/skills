@@ -1,6 +1,8 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -84,10 +86,11 @@ type githubPRFile struct {
 }
 
 var (
-	githubURLRe  = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)(?:/.*)?$`)
-	gitSSHRe     = regexp.MustCompile(`^git@github\.com:([^/]+)/([^/.]+?)(?:\.git)?$`)
-	gitSSHURLRe  = regexp.MustCompile(`^ssh://git@github\.com/([^/]+)/([^/.]+?)(?:\.git)?$`)
-	gitHTTPSRe   = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/.]+?)(?:\.git)?$`)
+	githubURLRe    = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)(?:/.*)?$`)
+	actionsURLRe   = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)/actions/runs/(\d+)(?:/job/(\d+))?(?:[/?].*)?$`)
+	gitSSHRe       = regexp.MustCompile(`^git@github\.com:([^/]+)/([^/.]+?)(?:\.git)?$`)
+	gitSSHURLRe    = regexp.MustCompile(`^ssh://git@github\.com/([^/]+)/([^/.]+?)(?:\.git)?$`)
+	gitHTTPSRe     = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/.]+?)(?:\.git)?$`)
 )
 
 func resolvePRRef(raw string) (owner, repo, number string, err error) {
@@ -107,6 +110,25 @@ func parseGitHubURL(raw string) (owner, repo, number string, err error) {
 		return "", "", "", fmt.Errorf("invalid PR reference: %q (expected URL like https://github.com/owner/repo/pull/123 or a PR number)", raw)
 	}
 	return m[1], m[2], m[3], nil
+}
+
+func isActionsURL(raw string) bool {
+	return actionsURLRe.MatchString(raw)
+}
+
+func parseActionsURL(raw string) (owner, repo, runID, jobID string, err error) {
+	m := actionsURLRe.FindStringSubmatch(raw)
+	if m == nil {
+		return "", "", "", "", fmt.Errorf("invalid Actions URL: %q", raw)
+	}
+	return m[1], m[2], m[3], m[4], nil
+}
+
+func resolveActionsURL(raw string) (owner, repo, runID, jobID string, err error) {
+	if m := actionsURLRe.FindStringSubmatch(raw); m != nil {
+		return m[1], m[2], m[3], m[4], nil
+	}
+	return "", "", "", "", fmt.Errorf("invalid Actions URL: %q", raw)
 }
 
 func getOriginRepo() (owner, repo string, err error) {
@@ -322,4 +344,173 @@ func runCmd(name string, args ...string) (string, error) {
 		return "", fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
 	}
 	return string(out), nil
+}
+
+// --- Workflow / CI types ---
+
+type WorkflowRun struct {
+	ID         int64
+	Name       string
+	Status     string
+	Conclusion string
+	HTMLURL    string
+	HeadBranch string
+	HeadSHA    string
+	CreatedAt  string
+}
+
+type WorkflowJob struct {
+	ID          int64
+	Name        string
+	Status      string
+	Conclusion  string
+	StartedAt   string
+	CompletedAt string
+}
+
+type githubWorkflowRunsResponse struct {
+	TotalCount   int                 `json:"total_count"`
+	WorkflowRuns []githubWorkflowRun `json:"workflow_runs"`
+}
+
+type githubWorkflowRun struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	HTMLURL    string `json:"html_url"`
+	HeadBranch string `json:"head_branch"`
+	HeadSHA    string `json:"head_sha"`
+	CreatedAt  string `json:"created_at"`
+}
+
+type githubWorkflowJobsResponse struct {
+	TotalCount int                `json:"total_count"`
+	Jobs       []githubWorkflowJob `json:"jobs"`
+}
+
+type githubWorkflowJob struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Status      string `json:"status"`
+	Conclusion  string `json:"conclusion"`
+	StartedAt   string `json:"started_at"`
+	CompletedAt string `json:"completed_at"`
+}
+
+func fetchWorkflowRuns(owner, repo, headSHA string) ([]WorkflowRun, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs?head_sha=%s&per_page=20", owner, repo, headSHA)
+	data, err := apiGet(url)
+	if err != nil {
+		return nil, err
+	}
+	var resp githubWorkflowRunsResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("parse workflow runs response: %w", err)
+	}
+	result := make([]WorkflowRun, len(resp.WorkflowRuns))
+	for i, r := range resp.WorkflowRuns {
+		result[i] = WorkflowRun{
+			ID:         r.ID,
+			Name:       r.Name,
+			Status:     r.Status,
+			Conclusion: r.Conclusion,
+			HTMLURL:    r.HTMLURL,
+			HeadBranch: r.HeadBranch,
+			HeadSHA:    r.HeadSHA,
+			CreatedAt:  r.CreatedAt,
+		}
+	}
+	return result, nil
+}
+
+func fetchWorkflowRunJobs(owner, repo string, runID int64) ([]WorkflowJob, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs/%d/jobs?per_page=100", owner, repo, runID)
+	data, err := apiGet(url)
+	if err != nil {
+		return nil, err
+	}
+	var resp githubWorkflowJobsResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("parse workflow jobs response: %w", err)
+	}
+	result := make([]WorkflowJob, len(resp.Jobs))
+	for i, j := range resp.Jobs {
+		result[i] = WorkflowJob{
+			ID:          j.ID,
+			Name:        j.Name,
+			Status:      j.Status,
+			Conclusion:  j.Conclusion,
+			StartedAt:   j.StartedAt,
+			CompletedAt: j.CompletedAt,
+		}
+	}
+	return result, nil
+}
+
+func fetchJobLogs(owner, repo string, jobID int64) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/jobs/%d/logs", owner, repo, jobID)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("fetch job logs: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
+		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read logs response: %w", err)
+	}
+
+	logContent, err := extractLogZip(data)
+	if err != nil {
+		return "", fmt.Errorf("extract logs zip: %w", err)
+	}
+	return logContent, nil
+}
+
+func ghRunViewLogs(owner, repo string, runID int64) (string, error) {
+	if !isGHAvailable() {
+		return "", fmt.Errorf("gh CLI not available")
+	}
+	out, err := runCmd("gh", "run", "view", fmt.Sprintf("%d", runID), "--log", "--repo", fmt.Sprintf("%s/%s", owner, repo))
+	if err != nil {
+		return "", fmt.Errorf("gh run view --log: %w", err)
+	}
+	return out, nil
+}
+
+func extractLogZip(data []byte) (string, error) {
+	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return "", err
+	}
+	var buf strings.Builder
+	for _, f := range reader.File {
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+		content, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			continue
+		}
+		if buf.Len() > 0 {
+			buf.WriteString("\n")
+		}
+		buf.WriteString(fmt.Sprintf("── %s ──\n", f.Name))
+		buf.Write(content)
+		if len(content) > 0 && content[len(content)-1] != '\n' {
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String(), nil
 }

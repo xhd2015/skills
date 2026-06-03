@@ -8,11 +8,24 @@ import (
 
 func handleFetchPR(args []string) error {
 	showDiff := false
+	showLogs := false
+	fullLogs := false
+	var workflowFilter string
 	var prRef string
 
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--diff" {
 			showDiff = true
+		} else if args[i] == "--logs" {
+			showLogs = true
+		} else if args[i] == "--full" {
+			fullLogs = true
+		} else if args[i] == "--workflow" {
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--workflow requires a value")
+			}
+			workflowFilter = args[i]
 		} else if args[i] == "-h" || args[i] == "--help" {
 			fmt.Print(prHelp)
 			return nil
@@ -23,6 +36,11 @@ func handleFetchPR(args []string) error {
 
 	if prRef == "" {
 		return fmt.Errorf("pr requires a PR URL or number")
+	}
+
+	if isActionsURL(prRef) || showLogs {
+		ciArgs := buildCIArgs(prRef, showLogs, workflowFilter, "", fullLogs)
+		return handleCI(ciArgs)
 	}
 
 	owner, repo, number, err := resolvePRRef(prRef)
@@ -52,14 +70,37 @@ func handleFetchPR(args []string) error {
 	return nil
 }
 
+func buildCIArgs(prRef string, showLogs bool, workflowFilter, jobFilter string, fullLogs bool) []string {
+	var args []string
+	if showLogs {
+		args = append(args, "--logs")
+	}
+	if fullLogs {
+		args = append(args, "--full")
+	}
+	if workflowFilter != "" {
+		args = append(args, "--workflow", workflowFilter)
+	}
+	if jobFilter != "" {
+		args = append(args, "--job", jobFilter)
+	}
+	args = append(args, prRef)
+	return args
+}
+
 const prHelp = `
-Usage: github-fetch pr [--diff] <url-or-number>
+Usage: github-fetch pr [--diff] [--logs] [--full] [--workflow <name>] <url-or-number>
 
 Fetch and display PR content.
 
 Options:
-  --diff    Show full diff (default: simplified diff, up to 10 files, 3 lines each)
-  -h, --help Show this help message
+  --diff            Show full diff (default: simplified diff, up to 10 files, 3 lines each)
+  --logs            Show CI workflow logs for the PR
+  --full            Show complete log output (use with --logs; default: last 4096 lines)
+  --workflow <name> Filter workflow runs by name (use with --logs)
+  -h, --help        Show this help message
+
+When <url> is an Actions URL (runs/.../job/...), --logs delegates to the ci subcommand.
 `
 
 func printPR(out interface{ WriteString(string) (int, error) }, info *PRInfo, files []PRFile, diff string, showDiff bool) {

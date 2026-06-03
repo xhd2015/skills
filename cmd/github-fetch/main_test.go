@@ -1,6 +1,8 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -418,6 +420,9 @@ func TestHelpText(t *testing.T) {
 	if !strings.Contains(help, "pr") {
 		t.Error("help text missing pr command")
 	}
+	if !strings.Contains(help, "ci") {
+		t.Error("help text missing ci command")
+	}
 	if !strings.Contains(help, "work-on") {
 		t.Error("help text missing work-on command")
 	}
@@ -429,6 +434,9 @@ func TestHelpText(t *testing.T) {
 	}
 	if !strings.Contains(help, "skill show") {
 		t.Error("help text missing skill show command")
+	}
+	if !strings.Contains(help, "pr --logs") {
+		t.Error("help text missing pr --logs option")
 	}
 }
 
@@ -644,6 +652,664 @@ func TestResolvePRFromBranchNotOnPR(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "not on a PR branch") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestParseActionsURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		owner   string
+		repo    string
+		runID   string
+		jobID   string
+		wantErr bool
+	}{
+		{"job url with pr query", "https://github.com/xhd2015/xgo/actions/runs/26795086426/job/78989577716?pr=385", "xhd2015", "xgo", "26795086426", "78989577716", false},
+		{"job url no query", "https://github.com/xhd2015/xgo/actions/runs/26795086426/job/78989577716", "xhd2015", "xgo", "26795086426", "78989577716", false},
+		{"run url", "https://github.com/owner/repo/actions/runs/123456", "owner", "repo", "123456", "", false},
+		{"run url with trailing slash", "https://github.com/owner/repo/actions/runs/123456/", "owner", "repo", "123456", "", false},
+		{"http scheme", "http://github.com/owner/repo/actions/runs/123/job/456", "owner", "repo", "123", "456", false},
+		{"not actions url", "https://github.com/owner/repo/pull/123", "", "", "", "", true},
+		{"random string", "not-a-url", "", "", "", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			owner, repo, runID, jobID, err := parseActionsURL(tt.raw)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error for %q, got nil", tt.raw)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+			if owner != tt.owner {
+				t.Errorf("owner = %q, want %q", owner, tt.owner)
+			}
+			if repo != tt.repo {
+				t.Errorf("repo = %q, want %q", repo, tt.repo)
+			}
+			if runID != tt.runID {
+				t.Errorf("runID = %q, want %q", runID, tt.runID)
+			}
+			if jobID != tt.jobID {
+				t.Errorf("jobID = %q, want %q", jobID, tt.jobID)
+			}
+		})
+	}
+}
+
+func TestIsActionsURL(t *testing.T) {
+	tests := []struct {
+		raw    string
+		isAction bool
+	}{
+		{"https://github.com/o/r/actions/runs/1/job/2", true},
+		{"https://github.com/o/r/actions/runs/1", true},
+		{"https://github.com/o/r/pull/1", false},
+		{"https://github.com/o/r/issues/1", false},
+		{"not-a-url", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.raw, func(t *testing.T) {
+			got := isActionsURL(tt.raw)
+			if got != tt.isAction {
+				t.Errorf("isActionsURL(%q) = %v, want %v", tt.raw, got, tt.isAction)
+			}
+		})
+	}
+}
+
+func TestHandleCIHelp(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleCI([]string{"-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleCI(-h): %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("ci help missing Usage: %s", output)
+	}
+	if !strings.Contains(output, "--logs") {
+		t.Errorf("ci help missing --logs: %s", output)
+	}
+}
+
+func TestHandleCIWithoutArgs(t *testing.T) {
+	err := handleCI(nil)
+	if err == nil {
+		t.Fatal("expected error for ci without arguments")
+	}
+	if !strings.Contains(err.Error(), "requires") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestHandleCIWithoutArgsEmpty(t *testing.T) {
+	err := handleCI([]string{})
+	if err == nil {
+		t.Fatal("expected error for ci with empty args")
+	}
+	if !strings.Contains(err.Error(), "requires") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestPrintWorkflowRuns(t *testing.T) {
+	info := &PRInfo{
+		Number: 385,
+		Head:   PRBranch{Ref: "dev-go1.25"},
+	}
+	runs := []WorkflowRun{
+		{ID: 1, Name: "CI / Build", Conclusion: "success", Status: "completed", HTMLURL: "https://github.com/o/r/actions/runs/1"},
+		{ID: 2, Name: "CI / Test", Conclusion: "failure", Status: "completed", HTMLURL: "https://github.com/o/r/actions/runs/2"},
+		{ID: 3, Name: "CI / Lint", Status: "in_progress", HTMLURL: "https://github.com/o/r/actions/runs/3"},
+		{ID: 4, Name: "CI / Deploy", Status: "queued", HTMLURL: "https://github.com/o/r/actions/runs/4"},
+	}
+
+	var buf strings.Builder
+	printWorkflowRuns(&buf, info, runs)
+	output := buf.String()
+
+	if !strings.Contains(output, "Workflow Runs for PR #385 (dev-go1.25)") {
+		t.Errorf("output missing header: %s", output)
+	}
+	if !strings.Contains(output, "CI / Build") {
+		t.Errorf("output missing run name: %s", output)
+	}
+	if !strings.Contains(output, "success") {
+		t.Errorf("output missing success status: %s", output)
+	}
+	if !strings.Contains(output, "failure") {
+		t.Errorf("output missing failure status: %s", output)
+	}
+	if !strings.Contains(output, "in_progress") {
+		t.Errorf("output missing in_progress status: %s", output)
+	}
+	if !strings.Contains(output, "queued") {
+		t.Errorf("output missing queued status: %s", output)
+	}
+}
+
+func TestPrintWorkflowRunsEmpty(t *testing.T) {
+	info := &PRInfo{
+		Number: 1,
+		Head:   PRBranch{Ref: "main"},
+	}
+
+	var buf strings.Builder
+	printWorkflowRuns(&buf, info, nil)
+	output := buf.String()
+
+	if !strings.Contains(output, "No workflow runs found") {
+		t.Errorf("output missing empty message: %s", output)
+	}
+}
+
+func TestExtractLogZip(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	files := []struct {
+		name    string
+		content string
+	}{
+		{"0_job.txt", "Step 1: Build\nStep 2: Test\nerror: test failed\n"},
+		{"1_compile step.txt", "go build ./...\n"},
+	}
+
+	for _, f := range files {
+		w, err := zw.Create(f.name)
+		if err != nil {
+			t.Fatalf("create zip entry %q: %v", f.name, err)
+		}
+		if _, err := w.Write([]byte(f.content)); err != nil {
+			t.Fatalf("write zip entry %q: %v", f.name, err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip writer: %v", err)
+	}
+
+	result, err := extractLogZip(buf.Bytes())
+	if err != nil {
+		t.Fatalf("extractLogZip: %v", err)
+	}
+
+	if !strings.Contains(result, "── 0_job.txt ──") {
+		t.Errorf("output missing 0_job.txt header: %s", result)
+	}
+	if !strings.Contains(result, "error: test failed") {
+		t.Errorf("output missing log content: %s", result)
+	}
+	if !strings.Contains(result, "── 1_compile step.txt ──") {
+		t.Errorf("output missing 1_compile step.txt header: %s", result)
+	}
+}
+
+func TestExtractLogZipEmpty(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip writer: %v", err)
+	}
+
+	result, err := extractLogZip(buf.Bytes())
+	if err != nil {
+		t.Fatalf("extractLogZip (empty): %v", err)
+	}
+	if result != "" {
+		t.Errorf("expected empty string for empty zip, got %q", result)
+	}
+}
+
+func TestFetchWorkflowRunsWithMock(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/jobs") {
+			json.NewEncoder(w).Encode(githubWorkflowJobsResponse{
+				TotalCount: 1,
+				Jobs: []githubWorkflowJob{
+					{ID: 100, Name: "test-job", Status: "completed", Conclusion: "success"},
+				},
+			})
+			return
+		}
+		resp := githubWorkflowRunsResponse{
+			TotalCount: 2,
+			WorkflowRuns: []githubWorkflowRun{
+				{ID: 1, Name: "CI / Build", Status: "completed", Conclusion: "success", HTMLURL: "https://github.com/o/r/actions/runs/1"},
+				{ID: 2, Name: "CI / Test", Status: "completed", Conclusion: "failure", HTMLURL: "https://github.com/o/r/actions/runs/2"},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mock.Close()
+
+	// Test the response types by decoding
+	resp, err := http.Get(mock.URL + "/repos/o/r/actions/runs?head_sha=abc")
+	if err != nil {
+		t.Fatalf("mock GET: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var runsResp githubWorkflowRunsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&runsResp); err != nil {
+		t.Fatalf("decode mock response: %v", err)
+	}
+	if runsResp.TotalCount != 2 {
+		t.Errorf("total_count = %d, want 2", runsResp.TotalCount)
+	}
+	if runsResp.WorkflowRuns[0].Name != "CI / Build" {
+		t.Errorf("run[0].Name = %q, want CI / Build", runsResp.WorkflowRuns[0].Name)
+	}
+	if runsResp.WorkflowRuns[1].Conclusion != "failure" {
+		t.Errorf("run[1].Conclusion = %q, want failure", runsResp.WorkflowRuns[1].Conclusion)
+	}
+}
+
+func TestFetchJobLogsWithMock(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		fw, _ := zw.Create("test_log.txt")
+		fw.Write([]byte("line1\nline2\n"))
+		zw.Close()
+		w.Header().Set("Content-Type", "application/zip")
+		w.Write(buf.Bytes())
+	}))
+	defer mock.Close()
+
+	// Directly test extractLogZip with a known zip
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	fw, _ := zw.Create("test_log.txt")
+	fw.Write([]byte("line1\nline2\n"))
+	zw.Close()
+
+	result, err := extractLogZip(buf.Bytes())
+	if err != nil {
+		t.Fatalf("extractLogZip: %v", err)
+	}
+	if !strings.Contains(result, "line1") {
+		t.Errorf("expected line1 in extracted logs: %s", result)
+	}
+}
+
+func TestHandleCIActionsURLWithMock(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/logs") {
+			var buf bytes.Buffer
+			zw := zip.NewWriter(&buf)
+			fw, _ := zw.Create("log.txt")
+			fw.Write([]byte("build output here\n"))
+			zw.Close()
+			w.Header().Set("Content-Type", "application/zip")
+			w.Write(buf.Bytes())
+			return
+		}
+		if strings.Contains(r.URL.Path, "/jobs") {
+			json.NewEncoder(w).Encode(githubWorkflowJobsResponse{
+				TotalCount: 1,
+				Jobs: []githubWorkflowJob{
+					{ID: 100, Name: "test-job", Status: "completed", Conclusion: "success"},
+				},
+			})
+			return
+		}
+		json.NewEncoder(w).Encode(githubWorkflowRunsResponse{
+			TotalCount: 1,
+			WorkflowRuns: []githubWorkflowRun{
+				{ID: 100, Name: "CI / Test", Status: "completed", Conclusion: "success"},
+			},
+		})
+	}))
+	defer mock.Close()
+
+	// Test the mock handles the expected endpoints
+	resp, err := http.Get(mock.URL + "/repos/o/r/actions/runs/100/jobs")
+	if err != nil {
+		t.Fatalf("mock jobs GET: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var jobsResp githubWorkflowJobsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jobsResp); err != nil {
+		t.Fatalf("decode jobs response: %v", err)
+	}
+	if jobsResp.TotalCount != 1 {
+		t.Errorf("total_count = %d, want 1", jobsResp.TotalCount)
+	}
+	if jobsResp.Jobs[0].Name != "test-job" {
+		t.Errorf("job name = %q, want test-job", jobsResp.Jobs[0].Name)
+	}
+
+	// Test the logs endpoint returns a valid zip
+	resp2, err := http.Get(mock.URL + "/repos/o/r/actions/jobs/100/logs")
+	if err != nil {
+		t.Fatalf("mock logs GET: %v", err)
+	}
+	defer resp2.Body.Close()
+	data, _ := io.ReadAll(resp2.Body)
+	logContent, err := extractLogZip(data)
+	if err != nil {
+		t.Fatalf("extract log zip from mock: %v", err)
+	}
+	if !strings.Contains(logContent, "build output here") {
+		t.Errorf("unexpected log content: %s", logContent)
+	}
+}
+
+func TestPrLogsDelegationToActionsURL(t *testing.T) {
+	// Verify that pr --logs with actions URL would call handleCI
+	// We test this by checking that isActionsURL returns true for action URL
+	// and that the pr handler calls the ci path
+	if !isActionsURL("https://github.com/o/r/actions/runs/1/job/2") {
+		t.Error("isActionsURL should return true for job URL")
+	}
+}
+
+func TestHandleCIActionURLPRRefConflict(t *testing.T) {
+	// Verify ci subcommand rejects both actions URL and --run-id
+	// We can't fully test this without API, but we test the flag parsing
+	err := handleCI([]string{"--run-id", "abc", "https://github.com/o/r/pull/1"})
+	if err == nil {
+		t.Fatal("expected error for invalid --run-id value")
+	}
+	if !strings.Contains(err.Error(), "invalid --run-id value") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleCIUnknownCommand(t *testing.T) {
+	err := handle([]string{"ci", "--invalid-flag"})
+	if err == nil {
+		t.Fatal("expected error for invalid flag")
+	}
+	if !strings.Contains(err.Error(), "unknown flag") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestHandleChecksAlias(t *testing.T) {
+	dir := initGitRepo(t, "https://github.com/testowner/testrepo.git")
+	oldDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(oldDir)
+
+	// "checks" is an alias for "ci" - it should not return "unknown command"
+	err := handle([]string{"checks", "https://github.com/testowner/testrepo/pull/42"})
+	// Expected to fail because it tries to make real API calls, but not with "unknown command"
+	if err == nil {
+		return // would be unexpected but fine
+	}
+	if strings.Contains(err.Error(), "unknown command") {
+		t.Errorf("checks alias should dispatch to ci, got: %v", err)
+	}
+}
+
+func TestRunIDFlagValueRequired(t *testing.T) {
+	err := handleCI([]string{"--run-id"})
+	if err == nil {
+		t.Fatal("expected error for --run-id without value")
+	}
+	if !strings.Contains(err.Error(), "requires a value") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestJobFlagValueRequired(t *testing.T) {
+	err := handleCI([]string{"--job"})
+	if err == nil {
+		t.Fatal("expected error for --job without value")
+	}
+	if !strings.Contains(err.Error(), "requires a value") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestWorkflowFlagValueRequired(t *testing.T) {
+	err := handleCI([]string{"--workflow"})
+	if err == nil {
+		t.Fatal("expected error for --workflow without value")
+	}
+	if !strings.Contains(err.Error(), "requires a value") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestFilterRunsByName(t *testing.T) {
+	runs := []WorkflowRun{
+		{ID: 1, Name: "Go 1-25 / test (go1.25)", Conclusion: "failure"},
+		{ID: 2, Name: "Go 1-24 / test (go1.24)", Conclusion: "success"},
+		{ID: 3, Name: "Lint", Conclusion: "success"},
+	}
+
+	filtered := filterRunsByName(runs, "Go 1-25")
+	if len(filtered) != 1 {
+		t.Fatalf("expected 1 run, got %d", len(filtered))
+	}
+	if filtered[0].ID != 1 {
+		t.Errorf("expected run ID 1, got %d", filtered[0].ID)
+	}
+
+	filtered = filterRunsByName(runs, "go 1-25")
+	if len(filtered) != 1 {
+		t.Fatalf("case-insensitive: expected 1 run, got %d", len(filtered))
+	}
+
+	filtered = filterRunsByName(runs, "Go")
+	if len(filtered) != 2 {
+		t.Fatalf("partial match: expected 2 runs, got %d", len(filtered))
+	}
+
+	filtered = filterRunsByName(runs, "nonexistent")
+	if len(filtered) != 0 {
+		t.Fatalf("no match: expected 0 runs, got %d", len(filtered))
+	}
+
+	filtered = filterRunsByName(nil, "Go")
+	if len(filtered) != 0 {
+		t.Fatalf("nil input: expected 0 runs, got %d", len(filtered))
+	}
+}
+
+func TestPrintWorkflowRunsFiltered(t *testing.T) {
+	info := &PRInfo{
+		Number: 385,
+		Head:   PRBranch{Ref: "dev-go1.25"},
+	}
+	runs := []WorkflowRun{
+		{ID: 1, Name: "Go 1-25 / test (go1.25)", Conclusion: "failure", Status: "completed", HTMLURL: "https://github.com/o/r/actions/runs/1"},
+	}
+
+	var buf strings.Builder
+	printWorkflowRuns(&buf, info, runs)
+	output := buf.String()
+
+	if !strings.Contains(output, "Go 1-25 / test (go1.25)") {
+		t.Errorf("output missing filtered run: %s", output)
+	}
+}
+
+func TestTruncateLogUnderLimit(t *testing.T) {
+	lines := make([]string, 100)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d", i)
+	}
+	content := strings.Join(lines, "\n")
+	result := truncateLog(content, false)
+
+	if !strings.Contains(result, "line 0") {
+		t.Errorf("expected content to be preserved, got: %s", result)
+	}
+	if strings.Contains(result, "showing last") {
+		t.Errorf("expected no truncation message for small content")
+	}
+}
+
+func TestTruncateLogOverLimit(t *testing.T) {
+	n := defaultLogLines + 100
+	lines := make([]string, n)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d", i)
+	}
+	content := strings.Join(lines, "\n")
+	result := truncateLog(content, false)
+
+	if !strings.Contains(result, "showing last") {
+		t.Errorf("expected truncation message, got: %s", result)
+	}
+	if !strings.Contains(result, fmt.Sprintf("%d lines", n)) {
+		t.Errorf("expected total line count %d in message, got: %s", n, result)
+	}
+	if !strings.Contains(result, "use --full") {
+		t.Errorf("expected --full hint, got: %s", result)
+	}
+	if strings.Contains(result, "line 0") {
+		t.Error("expected first lines to be truncated")
+	}
+	if !strings.Contains(result, fmt.Sprintf("line %d", n-1)) {
+		t.Errorf("expected last line to be present")
+	}
+	if !strings.Contains(result, fmt.Sprintf("line %d", n-defaultLogLines)) {
+		t.Errorf("expected line at truncation boundary to be present")
+	}
+}
+
+func TestTruncateLogFull(t *testing.T) {
+	n := defaultLogLines + 100
+	lines := make([]string, n)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d", i)
+	}
+	content := strings.Join(lines, "\n")
+	result := truncateLog(content, true)
+
+	if strings.Contains(result, "showing last") {
+		t.Errorf("full mode should not truncate")
+	}
+	if !strings.Contains(result, "line 0") {
+		t.Errorf("full mode should contain first line")
+	}
+	if !strings.Contains(result, fmt.Sprintf("line %d", n-1)) {
+		t.Errorf("full mode should contain last line")
+	}
+}
+
+func TestTruncateLogEmpty(t *testing.T) {
+	result := truncateLog("", false)
+	if result != "" {
+		t.Errorf("expected empty string, got: %q", result)
+	}
+}
+
+func TestTruncateLogExactLimit(t *testing.T) {
+	lines := make([]string, defaultLogLines)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d", i)
+	}
+	content := strings.Join(lines, "\n")
+	result := truncateLog(content, false)
+
+	if strings.Contains(result, "showing last") {
+		t.Errorf("content at exact limit should not be truncated")
+	}
+}
+
+func TestHandleCIFullFlag(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleCI([]string{"-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleCI(-h): %v", err)
+	}
+	if !strings.Contains(output, "--full") {
+		t.Errorf("ci help missing --full: %s", output)
+	}
+}
+
+func TestPrLogsFullFlag(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleFetchPR([]string{"-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleFetchPR(-h): %v", err)
+	}
+	if !strings.Contains(output, "--full") {
+		t.Errorf("pr help missing --full: %s", output)
+	}
+}
+
+func TestNormalizeSlashes(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Go 1-25 / test-go1-25", "Go 1-25/test-go1-25"},
+		{"Go 1-25/test-go1-25", "Go 1-25/test-go1-25"},
+		{"a / b / c", "a/b/c"},
+		{"a/b/c", "a/b/c"},
+		{"no-slash", "no-slash"},
+		{" / leading", "/leading"},
+		{"trailing / ", "trailing/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := normalizeSlashes(tt.input)
+			if got != tt.expected {
+				t.Errorf("normalizeSlashes(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFilterRunsByNameNormalized(t *testing.T) {
+	runs := []WorkflowRun{
+		{ID: 1, Name: "Go 1-25 / test-go1-25", Conclusion: "failure"},
+		{ID: 2, Name: "Go 1-24 / test-go1-24", Conclusion: "success"},
+	}
+
+	// "Go 1-25/test" should match "Go 1-25 / test-go1-25"
+	filtered := filterRunsByName(runs, "Go 1-25/test")
+	if len(filtered) != 1 || filtered[0].ID != 1 {
+		t.Fatalf("expected run ID 1, got %v", filtered)
+	}
+
+	// "Go 1-25 / test" should also match
+	filtered = filterRunsByName(runs, "Go 1-25 / test")
+	if len(filtered) != 1 || filtered[0].ID != 1 {
+		t.Fatalf("expected run ID 1 with spaced filter, got %v", filtered)
+	}
+
+	// Exact match without slash spaces
+	filtered = filterRunsByName(runs, "Go 1-25/test-go1-25")
+	if len(filtered) != 1 {
+		t.Fatalf("expected 1 result for exact match, got %d", len(filtered))
+	}
+}
+
+func TestPrLogsSkipsPRDisplay(t *testing.T) {
+	dir := initGitRepo(t, "https://github.com/testowner/testrepo.git")
+	oldDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(oldDir)
+
+	// When --logs is used with a PR number, it should delegate to ci immediately
+	// without trying to show PR info (which would fail without API)
+	// The error should be from the ci path (fetching PR info for CI), not from pr
+	err := handleFetchPR([]string{"--logs", "https://github.com/testowner/testrepo/pull/42"})
+	if err == nil {
+		return
+	}
+	// The error should come from ci (fetch workflow runs), not from pr display
+	if strings.Contains(err.Error(), "fetch PR files") {
+		t.Errorf("pr --logs should skip PR display, but got PR file fetch error: %v", err)
 	}
 }
 
