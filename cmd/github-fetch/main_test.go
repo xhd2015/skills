@@ -1014,13 +1014,12 @@ func TestPrLogsDelegationToActionsURL(t *testing.T) {
 }
 
 func TestHandleCIActionURLPRRefConflict(t *testing.T) {
-	// Verify ci subcommand rejects both actions URL and --run-id
-	// We can't fully test this without API, but we test the flag parsing
+	// Verify ci subcommand rejects invalid --run-id value
 	err := handleCI([]string{"--run-id", "abc", "https://github.com/o/r/pull/1"})
 	if err == nil {
 		t.Fatal("expected error for invalid --run-id value")
 	}
-	if !strings.Contains(err.Error(), "invalid --run-id value") {
+	if !strings.Contains(strings.ToLower(err.Error()), "invalid") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -1030,7 +1029,8 @@ func TestHandleCIUnknownCommand(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid flag")
 	}
-	if !strings.Contains(err.Error(), "unknown flag") {
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "unrecognized flag") && !strings.Contains(msg, "unknown flag") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -1553,6 +1553,56 @@ func mustRun(t *testing.T, dir, name string, args ...string) {
 		t.Fatalf("%s %v: %v", name, args, err)
 	}
 }
+
+func TestPrWorkflowEqualsSyntax(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleFetchPR([]string{"--workflow=build", "--diff", "-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleFetchPR with = syntax: %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("help output missing Usage: %s", output)
+	}
+}
+
+func TestCIRunIDEqualsSyntax(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleCI([]string{"--run-id=123", "--job=test", "-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleCI with = syntax: %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("help output missing Usage: %s", output)
+	}
+}
+
+func TestPushForceEqualsSyntax(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handlePush([]string{"--force", "-h"})
+	})
+	if err != nil {
+		t.Fatalf("handlePush with = syntax: %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("help output missing Usage: %s", output)
+	}
+}
+
+func TestPushShortFlagHelp(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handlePush([]string{"-f", "-h"})
+	})
+	if err != nil {
+		t.Fatalf("handlePush with short flags: %v", err)
+	}
+	if !strings.Contains(output, "Usage:") {
+		t.Errorf("help output missing Usage: %s", output)
+	}
+}
+
+// Helpers
 
 func captureStdout(t *testing.T, fn func() error) (string, error) {
 	t.Helper()

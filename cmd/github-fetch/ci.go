@@ -6,60 +6,36 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/xhd2015/less-flags"
 )
 
 const defaultLogLines = 4096
 
 func handleCI(args []string) error {
-	showLogs := false
-	fullLogs := false
-	var runID int64
-	var jobFilter string
-	var workflowFilter string
-	var prRef string
+	var showLogs, fullLogs bool
+	var runID *int64
+	var jobFilter, workflowFilter string
 
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--logs":
-			showLogs = true
-		case "--full":
-			fullLogs = true
-		case "--run-id":
-			i++
-			if i >= len(args) {
-				return fmt.Errorf("--run-id requires a value")
-			}
-			var err error
-			runID, err = strconv.ParseInt(args[i], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid --run-id value: %s", args[i])
-			}
-		case "--job":
-			i++
-			if i >= len(args) {
-				return fmt.Errorf("--job requires a value")
-			}
-			jobFilter = args[i]
-		case "--workflow":
-			i++
-			if i >= len(args) {
-				return fmt.Errorf("--workflow requires a value")
-			}
-			workflowFilter = args[i]
-		case "-h", "--help":
-			fmt.Print(ciHelp)
+	remain, err := lessflags.Bool("--logs", &showLogs).
+		Bool("--full", &fullLogs).
+		String("--job", &jobFilter).
+		String("--workflow", &workflowFilter).
+		Int("--run-id", &runID).
+		Help("-h,--help", ciHelp).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if err == lessflags.ErrHelp {
 			return nil
-		default:
-			if strings.HasPrefix(args[i], "-") {
-				return fmt.Errorf("unknown flag: %s", args[i])
-			}
-			prRef = args[i]
 		}
+		return err
 	}
 
-	if prRef == "" {
+	if len(remain) == 0 {
 		return fmt.Errorf("ci requires a PR URL, Actions run URL, or Actions job URL")
 	}
+	prRef := remain[0]
 
 	if isActionsURL(prRef) {
 		return handleCIActionsURL(os.Stdout, prRef, jobFilter, fullLogs)
@@ -106,7 +82,11 @@ func handleCI(args []string) error {
 	}
 
 	if showLogs {
-		return showRunLogs(os.Stdout, owner, repo, runs, runID, jobFilter, fullLogs)
+		var rid int64
+		if runID != nil {
+			rid = *runID
+		}
+		return showRunLogs(os.Stdout, owner, repo, runs, rid, jobFilter, fullLogs)
 	}
 
 	printWorkflowRuns(os.Stdout, info, runs)

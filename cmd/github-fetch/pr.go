@@ -4,39 +4,32 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/xhd2015/less-flags"
 )
 
 func handleFetchPR(args []string) error {
-	showDiff := false
-	showLogs := false
-	fullLogs := false
+	var showDiff, showLogs, fullLogs bool
 	var workflowFilter string
-	var prRef string
 
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--diff" {
-			showDiff = true
-		} else if args[i] == "--logs" {
-			showLogs = true
-		} else if args[i] == "--full" {
-			fullLogs = true
-		} else if args[i] == "--workflow" {
-			i++
-			if i >= len(args) {
-				return fmt.Errorf("--workflow requires a value")
-			}
-			workflowFilter = args[i]
-		} else if args[i] == "-h" || args[i] == "--help" {
-			fmt.Print(prHelp)
+	remain, err := lessflags.Bool("--diff", &showDiff).
+		Bool("--logs", &showLogs).
+		Bool("--full", &fullLogs).
+		String("--workflow", &workflowFilter).
+		Help("-h,--help", prHelp).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if err == lessflags.ErrHelp {
 			return nil
-		} else {
-			prRef = args[i]
 		}
+		return err
 	}
 
-	if prRef == "" {
+	if len(remain) == 0 {
 		return fmt.Errorf("pr requires a PR URL or number")
 	}
+	prRef := remain[0]
 
 	if isActionsURL(prRef) || showLogs {
 		ciArgs := buildCIArgs(prRef, showLogs, workflowFilter, "", fullLogs)

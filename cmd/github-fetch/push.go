@@ -3,31 +3,29 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/xhd2015/less-flags"
 )
 
 func handlePush(args []string) error {
-	force := false
-	var prRef string
-
-	i := 0
-	for i < len(args) {
-		if args[i] == "-f" || args[i] == "--force" {
-			force = true
-			i++
-			continue
-		}
-		if args[i] == "-h" || args[i] == "--help" {
-			fmt.Print(pushHelp)
+	var force bool
+	remain, err := lessflags.Bool("-f,--force", &force).
+		Help("-h,--help", pushHelp).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if err == lessflags.ErrHelp {
 			return nil
 		}
-		break
+		return err
 	}
-	if i < len(args) {
-		prRef = args[i]
+
+	var prRef string
+	if len(remain) > 0 {
+		prRef = remain[0]
 	}
 
 	var owner, repo, number string
-	var err error
 
 	if prRef != "" {
 		owner, repo, number, err = resolvePRRef(prRef)
