@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseGitHubURL(t *testing.T) {
@@ -1599,6 +1600,246 @@ func TestPushShortFlagHelp(t *testing.T) {
 	}
 	if !strings.Contains(output, "Usage:") {
 		t.Errorf("help output missing Usage: %s", output)
+	}
+}
+
+func TestWaitForRunCompletionAlreadyCompleted(t *testing.T) {
+	callCount := 0
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		json.NewEncoder(w).Encode(githubWorkflowRun{
+			ID:         100,
+			Name:       "CI / Test",
+			Status:     "completed",
+			Conclusion: "success",
+			HTMLURL:    "https://github.com/o/r/actions/runs/100",
+		})
+	}))
+	defer mock.Close()
+
+	origURL := apiBaseURL
+	apiBaseURL = mock.URL
+	defer func() { apiBaseURL = origURL }()
+
+	var buf strings.Builder
+	err := waitForRunCompletion(&buf, "o", "r", 100, "CI / Test", false)
+	if err != nil {
+		t.Fatalf("waitForRunCompletion: %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("expected no output for already completed run, got: %s", buf.String())
+	}
+	if callCount != 1 {
+		t.Errorf("expected 1 API call, got %d", callCount)
+	}
+}
+
+func TestWaitForRunCompletionNoWait(t *testing.T) {
+	var buf strings.Builder
+	err := waitForRunCompletion(&buf, "o", "r", 100, "CI / Test", true)
+	if err != nil {
+		t.Fatalf("waitForRunCompletion (noWait): %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("expected no output for noWait, got: %s", buf.String())
+	}
+}
+
+func TestWaitForRunCompletionInProgressThenCompleted(t *testing.T) {
+	callCount := 0
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount <= 3 {
+			json.NewEncoder(w).Encode(githubWorkflowRun{
+				ID:     100,
+				Name:   "CI / Test",
+				Status: "in_progress",
+				HTMLURL: "https://github.com/o/r/actions/runs/100",
+			})
+		} else {
+			json.NewEncoder(w).Encode(githubWorkflowRun{
+				ID:         100,
+				Name:       "CI / Test",
+				Status:     "completed",
+				Conclusion: "failure",
+				HTMLURL:    "https://github.com/o/r/actions/runs/100",
+			})
+		}
+	}))
+	defer mock.Close()
+
+	origURL := apiBaseURL
+	origInterval := pollInterval
+	apiBaseURL = mock.URL
+	pollInterval = 10 * time.Millisecond
+	defer func() {
+		apiBaseURL = origURL
+		pollInterval = origInterval
+	}()
+
+	var buf strings.Builder
+	err := waitForRunCompletion(&buf, "o", "r", 100, "CI / Test", false)
+	if err != nil {
+		t.Fatalf("waitForRunCompletion: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "Waiting for CI / Test (run #100) to complete") {
+		t.Errorf("output missing waiting message: %s", output)
+	}
+	if !strings.Contains(output, "in_progress") {
+		t.Errorf("output missing initial status line: %s", output)
+	}
+	if !strings.Contains(output, "completed failure") {
+		t.Errorf("output missing completed transition line: %s", output)
+	}
+	if !strings.Contains(output, "done (took ") {
+		t.Errorf("output missing done message: %s", output)
+	}
+	if !strings.Contains(output, ".") {
+		t.Errorf("output missing dots for unchanged status: %s", output)
+	}
+	if callCount != 4 {
+		t.Errorf("expected 4 API calls (1 initial + 3 polls), got %d", callCount)
+	}
+}
+
+func TestWaitForRunCompletionStatusTransitions(t *testing.T) {
+	callCount := 0
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		switch {
+		case callCount == 1:
+			json.NewEncoder(w).Encode(githubWorkflowRun{
+				ID:     100,
+				Name:   "CI / Test",
+				Status: "queued",
+				HTMLURL: "https://github.com/o/r/actions/runs/100",
+			})
+		case callCount <= 3:
+			json.NewEncoder(w).Encode(githubWorkflowRun{
+				ID:     100,
+				Name:   "CI / Test",
+				Status: "in_progress",
+				HTMLURL: "https://github.com/o/r/actions/runs/100",
+			})
+		default:
+			json.NewEncoder(w).Encode(githubWorkflowRun{
+				ID:         100,
+				Name:       "CI / Test",
+				Status:     "completed",
+				Conclusion: "success",
+				HTMLURL:    "https://github.com/o/r/actions/runs/100",
+			})
+		}
+	}))
+	defer mock.Close()
+
+	origURL := apiBaseURL
+	origInterval := pollInterval
+	apiBaseURL = mock.URL
+	pollInterval = 10 * time.Millisecond
+	defer func() {
+		apiBaseURL = origURL
+		pollInterval = origInterval
+	}()
+
+	var buf strings.Builder
+	err := waitForRunCompletion(&buf, "o", "r", 100, "CI / Test", false)
+	if err != nil {
+		t.Fatalf("waitForRunCompletion: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "Waiting for CI / Test (run #100) to complete") {
+		t.Errorf("output missing waiting message: %s", output)
+	}
+	if !strings.Contains(output, "queued") {
+		t.Errorf("output missing queued status line: %s", output)
+	}
+	if !strings.Contains(output, "in_progress") {
+		t.Errorf("output missing in_progress transition line: %s", output)
+	}
+	if !strings.Contains(output, "completed success") {
+		t.Errorf("output missing completed transition line: %s", output)
+	}
+	if !strings.Contains(output, "done (took ") {
+		t.Errorf("output missing done message: %s", output)
+	}
+	if !strings.Contains(output, ".") {
+		t.Errorf("output missing dots: %s", output)
+	}
+	// queued should appear before in_progress
+	queuedIdx := strings.Index(output, "queued")
+	inProgressIdx := strings.Index(output, "in_progress")
+	if queuedIdx < 0 || inProgressIdx < 0 || queuedIdx >= inProgressIdx {
+		t.Errorf("expected queued before in_progress in output: %s", output)
+	}
+	// Verify the output has 3 status lines (queued, in_progress, completed)
+	// by counting lines that contain recognizable status keywords
+	statusLines := 0
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, "queued") || strings.Contains(line, "in_progress") || strings.Contains(line, "completed") {
+			statusLines++
+		}
+	}
+	if statusLines < 3 {
+		t.Errorf("expected at least 3 status lines, got %d: %s", statusLines, output)
+	}
+}
+
+func TestWaitForRunCompletionTimeout(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(githubWorkflowRun{
+			ID:     100,
+			Name:   "CI / Test",
+			Status: "in_progress",
+			HTMLURL: "https://github.com/o/r/actions/runs/100",
+		})
+	}))
+	defer mock.Close()
+
+	origURL := apiBaseURL
+	origInterval := pollInterval
+	origTimeout := pollTimeout
+	apiBaseURL = mock.URL
+	pollInterval = 10 * time.Millisecond
+	pollTimeout = 50 * time.Millisecond
+	defer func() {
+		apiBaseURL = origURL
+		pollInterval = origInterval
+		pollTimeout = origTimeout
+	}()
+
+	var buf strings.Builder
+	err := waitForRunCompletion(&buf, "o", "r", 100, "CI / Test", false)
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !strings.Contains(err.Error(), "timed out") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCINoWaitFlag(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleCI([]string{"--no-wait", "-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleCI with --no-wait: %v", err)
+	}
+	if !strings.Contains(output, "--no-wait") {
+		t.Errorf("ci help missing --no-wait: %s", output)
+	}
+}
+
+func TestPrNoWaitFlag(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handleFetchPR([]string{"--no-wait", "-h"})
+	})
+	if err != nil {
+		t.Fatalf("handleFetchPR with --no-wait: %v", err)
+	}
+	if !strings.Contains(output, "--no-wait") {
+		t.Errorf("pr help missing --no-wait: %s", output)
 	}
 }
 

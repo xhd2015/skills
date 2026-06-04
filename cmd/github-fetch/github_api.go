@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type PRInfo struct {
@@ -84,6 +85,12 @@ type githubPRFile struct {
 	Changes   int    `json:"changes"`
 	Patch     string `json:"patch"`
 }
+
+var (
+	apiBaseURL   = "https://api.github.com"
+	pollInterval = 10 * time.Second
+	pollTimeout  = 60 * time.Minute
+)
 
 var (
 	githubURLRe    = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)(?:/.*)?$`)
@@ -446,6 +453,28 @@ func fetchWorkflowRunJobs(owner, repo string, runID int64) ([]WorkflowJob, error
 		}
 	}
 	return result, nil
+}
+
+func fetchSingleWorkflowRun(owner, repo string, runID int64) (*WorkflowRun, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d", apiBaseURL, owner, repo, runID)
+	data, err := apiGet(url)
+	if err != nil {
+		return nil, err
+	}
+	var run githubWorkflowRun
+	if err := json.Unmarshal(data, &run); err != nil {
+		return nil, fmt.Errorf("parse workflow run response: %w", err)
+	}
+	return &WorkflowRun{
+		ID:         run.ID,
+		Name:       run.Name,
+		Status:     run.Status,
+		Conclusion: run.Conclusion,
+		HTMLURL:    run.HTMLURL,
+		HeadBranch: run.HeadBranch,
+		HeadSHA:    run.HeadSHA,
+		CreatedAt:  run.CreatedAt,
+	}, nil
 }
 
 type githubContentsFile struct {

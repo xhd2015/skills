@@ -9,12 +9,13 @@ import (
 )
 
 func handleFetchPR(args []string) error {
-	var showDiff, showLogs, fullLogs bool
+	var showDiff, showLogs, fullLogs, noWait bool
 	var workflowFilter string
 
 	remain, err := lessflags.Bool("--diff", &showDiff).
 		Bool("--logs", &showLogs).
 		Bool("--full", &fullLogs).
+		Bool("--no-wait", &noWait).
 		String("--workflow", &workflowFilter).
 		Help("-h,--help", prHelp).
 		HelpNoExit().
@@ -32,7 +33,7 @@ func handleFetchPR(args []string) error {
 	prRef := remain[0]
 
 	if isActionsURL(prRef) || showLogs {
-		ciArgs := buildCIArgs(prRef, showLogs, workflowFilter, "", fullLogs)
+		ciArgs := buildCIArgs(prRef, showLogs, workflowFilter, "", fullLogs, noWait)
 		return handleCI(ciArgs)
 	}
 
@@ -63,13 +64,16 @@ func handleFetchPR(args []string) error {
 	return nil
 }
 
-func buildCIArgs(prRef string, showLogs bool, workflowFilter, jobFilter string, fullLogs bool) []string {
+func buildCIArgs(prRef string, showLogs bool, workflowFilter, jobFilter string, fullLogs, noWait bool) []string {
 	var args []string
 	if showLogs {
 		args = append(args, "--logs")
 	}
 	if fullLogs {
 		args = append(args, "--full")
+	}
+	if noWait {
+		args = append(args, "--no-wait")
 	}
 	if workflowFilter != "" {
 		args = append(args, "--workflow", workflowFilter)
@@ -82,7 +86,7 @@ func buildCIArgs(prRef string, showLogs bool, workflowFilter, jobFilter string, 
 }
 
 const prHelp = `
-Usage: github-fetch pr [--diff] [--logs] [--full] [--workflow <name>] <url-or-number>
+Usage: github-fetch pr [--diff] [--logs] [--full] [--no-wait] [--workflow <name>] <url-or-number>
 
 Fetch and display PR content.
 
@@ -90,6 +94,7 @@ Options:
   --diff            Show full diff (default: simplified diff, up to 10 files, 3 lines each)
   --logs            Show CI workflow logs for the PR
   --full            Show complete log output (use with --logs; default: last 4096 lines)
+  --no-wait         Skip waiting for in-progress runs to complete (use with --logs)
   --workflow <name> Filter workflow runs by name (use with --logs)
   -h, --help        Show this help message
 

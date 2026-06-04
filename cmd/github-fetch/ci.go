@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/xhd2015/less-flags"
 )
@@ -13,12 +14,13 @@ import (
 const defaultLogLines = 4096
 
 func handleCI(args []string) error {
-	var showLogs, fullLogs bool
+	var showLogs, fullLogs, noWait bool
 	var runID *int64
 	var jobFilter, workflowFilter string
 
 	remain, err := lessflags.Bool("--logs", &showLogs).
 		Bool("--full", &fullLogs).
+		Bool("--no-wait", &noWait).
 		String("--job", &jobFilter).
 		String("--workflow", &workflowFilter).
 		Int("--run-id", &runID).
@@ -38,7 +40,7 @@ func handleCI(args []string) error {
 	prRef := remain[0]
 
 	if isActionsURL(prRef) {
-		return handleCIActionsURL(os.Stdout, prRef, jobFilter, fullLogs)
+		return handleCIActionsURL(os.Stdout, prRef, jobFilter, fullLogs, noWait)
 	}
 
 	owner, repo, number, err := resolvePRRef(prRef)
@@ -86,7 +88,7 @@ func handleCI(args []string) error {
 		if runID != nil {
 			rid = *runID
 		}
-		return showRunLogs(os.Stdout, owner, repo, runs, rid, jobFilter, fullLogs)
+		return showRunLogs(os.Stdout, owner, repo, runs, rid, jobFilter, fullLogs, noWait)
 	}
 
 	printWorkflowRuns(os.Stdout, info, runs)
@@ -112,7 +114,57 @@ func normalizeSlashes(s string) string {
 	return strings.Join(parts, "/")
 }
 
-func handleCIActionsURL(w io.Writer, url, jobFilter string, fullLogs bool) error {
+func waitForRunCompletion(w io.Writer, owner, repo string, runID int64, runName string, noWait bool) error {
+	if noWait {
+		return nil
+	}
+
+	run, err := fetchSingleWorkflowRun(owner, repo, runID)
+	if err != nil {
+		return fmt.Errorf("check run status: %w", err)
+	}
+
+	if run.Status == "completed" {
+		return nil
+	}
+
+	fmt.Fprintf(w, "Waiting for %s (run #%d) to complete\n", runName, runID)
+	fmt.Fprintf(w, "%s %s\n", time.Now().Format("15:04:05"), run.Status)
+	prevStatus := run.Status
+	startTime := time.Now()
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	timeout := time.After(pollTimeout)
+
+	for {
+		select {
+		case <-ticker.C:
+			run, err = fetchSingleWorkflowRun(owner, repo, runID)
+			if err != nil {
+				return fmt.Errorf("poll run status: %w", err)
+			}
+			if run.Status == "completed" {
+				fmt.Fprintf(w, "\n%s %s %s\n", time.Now().Format("15:04:05"), run.Status, run.Conclusion)
+				elapsed := time.Since(startTime).Round(time.Second)
+				fmt.Fprintf(w, "done (took %v)\n", elapsed)
+				return nil
+			}
+			if run.Status != prevStatus {
+				fmt.Fprintf(w, "\n%s %s\n", time.Now().Format("15:04:05"), run.Status)
+				prevStatus = run.Status
+			} else {
+				fmt.Fprint(w, ".")
+			}
+		case <-timeout:
+			fmt.Fprint(w, "\n")
+			return fmt.Errorf("timed out waiting for run #%d to complete after %v", runID, pollTimeout)
+		}
+	}
+}
+
+func handleCIActionsURL(w io.Writer, url, jobFilter string, fullLogs, noWait bool) error {
 	owner, repo, runIDStr, jobIDStr, err := resolveActionsURL(url)
 	if err != nil {
 		return err
@@ -128,14 +180,14 @@ func handleCIActionsURL(w io.Writer, url, jobFilter string, fullLogs bool) error
 		if err != nil {
 			return fmt.Errorf("invalid job ID: %s", jobIDStr)
 		}
-		return fetchAndPrintJobLog(w, owner, repo, runID, jobID, fullLogs)
+		return fetchAndPrintJobLog(w, owner, repo, runID, jobID, fullLogs, noWait)
 	}
 
 	runs := []WorkflowRun{{ID: runID, Name: fmt.Sprintf("run #%d", runID)}}
-	return showRunLogs(w, owner, repo, runs, runID, jobFilter, fullLogs)
+	return showRunLogs(w, owner, repo, runs, runID, jobFilter, fullLogs, noWait)
 }
 
-func showRunLogs(w io.Writer, owner, repo string, runs []WorkflowRun, runID int64, jobFilter string, fullLogs bool) error {
+func showRunLogs(w io.Writer, owner, repo string, runs []WorkflowRun, runID int64, jobFilter string, fullLogs, noWait bool) error {
 	var targetRun *WorkflowRun
 	if runID != 0 {
 		for i := range runs {
@@ -152,6 +204,10 @@ func showRunLogs(w io.Writer, owner, repo string, runs []WorkflowRun, runID int6
 			return fmt.Errorf("no workflow runs found")
 		}
 		targetRun = &runs[0]
+	}
+
+	if err := waitForRunCompletion(w, owner, repo, targetRun.ID, targetRun.Name, noWait); err != nil {
+		return err
 	}
 
 	jobs, err := fetchWorkflowRunJobs(owner, repo, targetRun.ID)
@@ -200,7 +256,11 @@ func showRunLogsViaGh(w io.Writer, partial string, owner, repo string, runID int
 	return nil
 }
 
-func fetchAndPrintJobLog(w io.Writer, owner, repo string, runID, jobID int64, fullLogs bool) error {
+func fetchAndPrintJobLog(w io.Writer, owner, repo string, runID, jobID int64, fullLogs, noWait bool) error {
+	if err := waitForRunCompletion(w, owner, repo, runID, fmt.Sprintf("run #%d", runID), noWait); err != nil {
+		return err
+	}
+
 	logContent, err := fetchJobLogs(owner, repo, jobID)
 	if err != nil {
 		ghOutput, ghErr := ghRunViewLogs(owner, repo, runID)
@@ -237,7 +297,7 @@ func truncateLog(content string, full bool) string {
 }
 
 const ciHelp = `
-Usage: github-fetch ci [--logs] [--full] [--workflow <name>] [--run-id <id>] [--job <name>] <url>
+Usage: github-fetch ci [--logs] [--full] [--no-wait] [--workflow <name>] [--run-id <id>] [--job <name>] <url>
 
 Show CI workflow runs and logs.
 
@@ -249,6 +309,7 @@ Show CI workflow runs and logs.
 Options:
   --logs            Show logs (default for job URLs)
   --full            Show complete log output (default: last 4096 lines)
+  --no-wait         Skip waiting for in-progress runs to complete
   --workflow <name> Filter workflow runs by name (case-insensitive substring match)
   --run-id <id>     Target a specific workflow run (use with PR URLs)
   --job <name>      Filter logs to a specific job name
