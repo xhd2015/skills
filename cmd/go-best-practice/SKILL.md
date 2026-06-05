@@ -26,6 +26,8 @@ tree; address a sub-topic with a slash-separated path, e.g.
   - `types` — supported target types (`*bool`, `*string`, `*int`,
     `*time.Duration`, `*[]string`, and `**T` variants)
   - `subcommand` — sub-command dispatcher patterns (with `StopOnFirstArg` and no-toplevel-flags variants)
+- `skill-cli` — building skill CLIs with `skill install` and
+  `skill show` sub-commands (embed, install package, topic loading)
 
 ## Usage
 

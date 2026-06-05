@@ -42,6 +42,7 @@ func HandleInstall(opts InstallOptions, args []string) error {
 	var generalAgents bool
 	var noOverride bool
 	var force bool
+	var global bool
 	args, err := flags.Bool("--dry-run", &dryRun).
 		Bool("--cursor", &cursor).
 		Bool("--codex", &codex).
@@ -49,6 +50,7 @@ func HandleInstall(opts InstallOptions, args []string) error {
 		Bool("--general-agents", &generalAgents).
 		Bool("--no-override", &noOverride).
 		Bool("--force", &force).
+		Bool("--global", &global).
 		Help("-h,--help", fmt.Sprintf(`
 Usage: %s [OPTIONS] [<dir>]
 
@@ -61,6 +63,7 @@ Options:
   --opencode   Install to .opencode/skills/%s (no dir argument needed)
   --general-agents
                Install to .agents/skills/%s (no dir argument needed)
+  --global     Install to ~/.<dir>/... instead of current directory's .<dir>/...
   --no-override
                Do not automatically overwrite an existing non-empty directory
   --dry-run    Show what would be created without actually creating anything
@@ -92,6 +95,18 @@ Multiple --cursor/--codex/--opencode/--general-agents flags can be combined to i
 			dirs = append(dirs, args[0])
 		} else {
 			dirs = append(dirs, filepath.Join(".agents", "skills", skillDirName))
+		}
+	}
+
+	if global {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("get home dir: %w", err)
+		}
+		for i, dir := range dirs {
+			if !filepath.IsAbs(dir) {
+				dirs[i] = filepath.Join(homeDir, dir)
+			}
 		}
 	}
 

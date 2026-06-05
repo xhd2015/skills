@@ -23,6 +23,7 @@ func TestListTopics(t *testing.T) {
 		"flags-parsing/subcommand",
 		"flags-parsing/types",
 		"kool-create",
+		"skill-cli",
 	}
 	for _, expected := range expectedTopics {
 		if !topicSet[expected] {
@@ -41,6 +42,31 @@ func TestReadTopicExistingTopLevel(t *testing.T) {
 	}
 	if !strings.Contains(content, "kool create") {
 		t.Errorf("unexpected content for kool-create: %s", content)
+	}
+}
+
+func TestReadTopicSkillCLI(t *testing.T) {
+	content, ok, err := readTopic("skill-cli")
+	if err != nil {
+		t.Fatalf("readTopic(skill-cli): %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok for skill-cli")
+	}
+	if !strings.Contains(content, "skill install") {
+		t.Errorf("unexpected content for skill-cli: %s", content)
+	}
+}
+
+func TestHandleSkillCLITopic(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handle([]string{"skill-cli"})
+	})
+	if err != nil {
+		t.Fatalf("handle(skill-cli): %v", err)
+	}
+	if !strings.Contains(output, "skill install") {
+		t.Errorf("skill-cli output missing expected content: %s", output)
 	}
 }
 
@@ -120,7 +146,13 @@ func TestPrintTopicIndex(t *testing.T) {
 		t.Errorf("missing header in output: %s", output)
 	}
 	if !strings.Contains(output, "kool-create") {
-		t.Errorf("missing kool-create in output: %s", output)
+		t.Errorf("topics output missing kool-create: %s", output)
+	}
+	if !strings.Contains(output, "skill-cli") {
+		t.Errorf("topics output missing skill-cli: %s", output)
+	}
+	if !strings.Contains(output, "skill-cli") {
+		t.Errorf("missing skill-cli in output: %s", output)
 	}
 }
 
