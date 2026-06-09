@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/xhd2015/skills/cmd/go-best-practice/vet"
 	"github.com/xhd2015/skills/install"
 )
 
@@ -65,7 +66,7 @@ func handle(args []string) error {
 	case "skill":
 		return handleSkill(args[1:])
 	case "vet":
-		return handleVet(args[1:])
+		return vet.Run(args[1:])
 	}
 
 	content, ok, err := readTopic(args[0])
