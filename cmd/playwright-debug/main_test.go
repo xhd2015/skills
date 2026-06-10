@@ -14,8 +14,11 @@ func TestHelpText(t *testing.T) {
 	if !strings.Contains(help, "run") {
 		t.Error("help text missing run command")
 	}
-	if !strings.Contains(help, "install") {
-		t.Error("help text missing install command")
+	if !strings.Contains(help, "skill install") {
+		t.Error("help text missing skill install command")
+	}
+	if !strings.Contains(help, "skill show") {
+		t.Error("help text missing skill show command")
 	}
 }
 
@@ -113,6 +116,45 @@ func TestHandleSkillNoSubcommand(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unknown skill sub-command") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestHandleSkillInstallDryRun(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handle([]string{"skill", "install", "--dry-run"})
+	})
+	if err != nil {
+		t.Fatalf("handle(skill install --dry-run): %v", err)
+	}
+	if !strings.Contains(output, "[dry-run]") {
+		t.Errorf("expected dry-run output, got: %s", output)
+	}
+}
+
+func TestHandleSkillInstallDirDryRun(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handle([]string{"skill", "install", "/tmp/test-playwright-debug", "--dry-run"})
+	})
+	if err != nil {
+		t.Fatalf("handle(skill install /tmp/... --dry-run): %v", err)
+	}
+	if !strings.Contains(output, "[dry-run]") {
+		t.Errorf("expected dry-run output, got: %s", output)
+	}
+	if !strings.Contains(output, "/tmp/test-playwright-debug") {
+		t.Errorf("expected output to mention target dir, got: %s", output)
+	}
+}
+
+func TestHandleSkillInstallCursorDryRun(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handle([]string{"skill", "install", "--cursor", "--dry-run"})
+	})
+	if err != nil {
+		t.Fatalf("handle(skill install --cursor --dry-run): %v", err)
+	}
+	if !strings.Contains(output, "[dry-run]") {
+		t.Errorf("expected dry-run output, got: %s", output)
 	}
 }
 

@@ -19,9 +19,9 @@ const help = `
 Usage: playwright-debug <command> [ARGS]
 
 Commands:
-  run <js_script>    Run a Playwright script (default if no command given)
-  install [<dir>]    Install skill SKILL.md to a directory (or use --cursor)
-  skill show         Show the content of SKILL.md
+  run <js_script>       Run a Playwright script (default if no command given)
+  skill show            Show the content of SKILL.md
+  skill install [<dir>] Install skill SKILL.md to a directory
 
 The run command wraps your script with browser setup. You get:
   - browser  (Chromium instance)
@@ -56,8 +56,6 @@ func handle(args []string) error {
 	}
 
 	switch args[0] {
-	case "install":
-		return handleInstall(args[1:])
 	case "run":
 		if len(args) < 2 {
 			return fmt.Errorf("run requires a JavaScript script argument")
@@ -71,19 +69,22 @@ func handle(args []string) error {
 }
 
 func handleSkill(args []string) error {
-	if len(args) == 0 || args[0] != "show" {
-		return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+	if len(args) == 0 {
+		return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
 	}
-	fmt.Print(skillTemplate)
-	return nil
-}
-
-func handleInstall(args []string) error {
-	return install.HandleInstall(install.InstallOptions{
-		SkillDirName: "playwright-debug",
-		SkillContent: skillTemplate,
-		Usage:        "install",
-	}, args)
+	switch args[0] {
+	case "show":
+		fmt.Print(skillTemplate)
+		return nil
+	case "install":
+		return install.HandleInstall(install.InstallOptions{
+			SkillDirName: "playwright-debug",
+			SkillContent: skillTemplate,
+			Usage:        "skill install",
+		}, args[1:])
+	default:
+		return fmt.Errorf("unknown skill sub-command: %s (expected `skill show` or `skill install`)", args[0])
+	}
 }
 
 func cacheDir() string {
