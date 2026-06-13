@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -92,6 +93,13 @@ var (
 	pollTimeout  = 60 * time.Minute
 )
 
+func getAPIBaseURL() string {
+	if url := os.Getenv("GITHUB_API_BASE_URL"); url != "" {
+		return url
+	}
+	return apiBaseURL
+}
+
 var (
 	githubURLRe    = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)(?:/.*)?$`)
 	actionsURLRe   = regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)/actions/runs/(\d+)(?:/job/(\d+))?(?:[/?].*)?$`)
@@ -160,7 +168,7 @@ func parseOriginURL(raw string) (owner, repo string, err error) {
 }
 
 func fetchPRInfo(owner, repo, number string) (*PRInfo, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%s", owner, repo, number)
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s", getAPIBaseURL(), owner, repo, number)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -200,7 +208,7 @@ func fetchPRInfo(owner, repo, number string) (*PRInfo, error) {
 }
 
 func fetchPRFiles(owner, repo, number string) ([]PRFile, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%s/files", owner, repo, number)
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s/files", getAPIBaseURL(), owner, repo, number)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -224,7 +232,7 @@ func fetchPRFiles(owner, repo, number string) ([]PRFile, error) {
 }
 
 func fetchPRDiff(owner, repo, number string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%s", owner, repo, number)
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s", getAPIBaseURL(), owner, repo, number)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
@@ -278,7 +286,7 @@ func tryGhAPI(url string, originalErr error) ([]byte, error) {
 	if !isGHAvailable() {
 		return nil, originalErr
 	}
-	apiPath := strings.TrimPrefix(url, "https://api.github.com/")
+	apiPath := strings.TrimPrefix(url, getAPIBaseURL()+"/")
 	out, err := runCmd("gh", "api", apiPath)
 	if err != nil {
 		return nil, fmt.Errorf("gh api failed: %w (original: %v)", err, originalErr)
@@ -364,6 +372,7 @@ type WorkflowRun struct {
 	HeadBranch string
 	HeadSHA    string
 	CreatedAt  string
+	Event      string
 }
 
 type WorkflowJob struct {
@@ -389,6 +398,7 @@ type githubWorkflowRun struct {
 	HeadBranch string `json:"head_branch"`
 	HeadSHA    string `json:"head_sha"`
 	CreatedAt  string `json:"created_at"`
+	Event      string `json:"event"`
 }
 
 type githubWorkflowJobsResponse struct {
@@ -406,7 +416,7 @@ type githubWorkflowJob struct {
 }
 
 func fetchWorkflowRuns(owner, repo, headBranch string) ([]WorkflowRun, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs?branch=%s&event=pull_request&per_page=20", owner, repo, headBranch)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?branch=%s&event=pull_request&per_page=20", getAPIBaseURL(), owner, repo, headBranch)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -426,13 +436,14 @@ func fetchWorkflowRuns(owner, repo, headBranch string) ([]WorkflowRun, error) {
 			HeadBranch: r.HeadBranch,
 			HeadSHA:    r.HeadSHA,
 			CreatedAt:  r.CreatedAt,
+			Event:      r.Event,
 		}
 	}
 	return result, nil
 }
 
 func fetchWorkflowRunJobs(owner, repo string, runID int64) ([]WorkflowJob, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs/%d/jobs?per_page=100", owner, repo, runID)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100", getAPIBaseURL(), owner, repo, runID)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -456,7 +467,7 @@ func fetchWorkflowRunJobs(owner, repo string, runID int64) ([]WorkflowJob, error
 }
 
 func fetchSingleWorkflowRun(owner, repo string, runID int64) (*WorkflowRun, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d", apiBaseURL, owner, repo, runID)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d", getAPIBaseURL(), owner, repo, runID)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -474,6 +485,7 @@ func fetchSingleWorkflowRun(owner, repo string, runID int64) (*WorkflowRun, erro
 		HeadBranch: run.HeadBranch,
 		HeadSHA:    run.HeadSHA,
 		CreatedAt:  run.CreatedAt,
+		Event:      run.Event,
 	}, nil
 }
 
@@ -483,7 +495,7 @@ type githubContentsFile struct {
 }
 
 func fetchWorkflowFiles(owner, repo string) ([]string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/.github/workflows", owner, repo)
+	url := fmt.Sprintf("%s/repos/%s/%s/contents/.github/workflows", getAPIBaseURL(), owner, repo)
 	data, err := apiGet(url)
 	if err != nil {
 		return nil, err
@@ -502,7 +514,7 @@ func fetchWorkflowFiles(owner, repo string) ([]string, error) {
 }
 
 func fetchJobLogs(owner, repo string, jobID int64) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/jobs/%d/logs", owner, repo, jobID)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%d/logs", getAPIBaseURL(), owner, repo, jobID)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("fetch job logs: %w", err)
@@ -566,4 +578,52 @@ func extractLogZip(data []byte) (string, error) {
 		}
 	}
 	return buf.String(), nil
+}
+
+type githubRepoResponse struct {
+	DefaultBranch string `json:"default_branch"`
+	FullName      string `json:"full_name"`
+}
+
+func fetchDefaultBranch(owner, repo string) (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s", getAPIBaseURL(), owner, repo)
+	data, err := apiGet(url)
+	if err != nil {
+		return "", err
+	}
+	var resp githubRepoResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return "", fmt.Errorf("parse repo response: %w", err)
+	}
+	if resp.DefaultBranch == "" {
+		return "main", nil
+	}
+	return resp.DefaultBranch, nil
+}
+
+func fetchRepoWorkflowRuns(owner, repo, branch string) ([]WorkflowRun, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?branch=%s&per_page=20", getAPIBaseURL(), owner, repo, branch)
+	data, err := apiGet(url)
+	if err != nil {
+		return nil, err
+	}
+	var resp githubWorkflowRunsResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("parse workflow runs response: %w", err)
+	}
+	result := make([]WorkflowRun, len(resp.WorkflowRuns))
+	for i, r := range resp.WorkflowRuns {
+		result[i] = WorkflowRun{
+			ID:         r.ID,
+			Name:       r.Name,
+			Status:     r.Status,
+			Conclusion: r.Conclusion,
+			HTMLURL:    r.HTMLURL,
+			HeadBranch: r.HeadBranch,
+			HeadSHA:    r.HeadSHA,
+			CreatedAt:  r.CreatedAt,
+			Event:      r.Event,
+		}
+	}
+	return result, nil
 }

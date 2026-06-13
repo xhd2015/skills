@@ -35,7 +35,7 @@ func handleCI(args []string) error {
 	}
 
 	if len(remain) == 0 {
-		return fmt.Errorf("ci requires a PR URL, Actions run URL, or Actions job URL")
+		return handleCIAutoDetect(os.Stdout, showLogs, fullLogs, noWait, runID, jobFilter, workflowFilter)
 	}
 	prRef := remain[0]
 
@@ -93,6 +93,101 @@ func handleCI(args []string) error {
 
 	printWorkflowRuns(os.Stdout, info, runs)
 	return nil
+}
+
+func handleCIAutoDetect(w io.Writer, showLogs, fullLogs, noWait bool, runID *int64, jobFilter, workflowFilter string) error {
+	owner, repo, err := getOriginRepo()
+	if err != nil {
+		return fmt.Errorf("cannot auto-detect repository: %w (use ci <url> instead)", err)
+	}
+	fmt.Fprintf(w, "Detected repo: https://github.com/%s/%s\n", owner, repo)
+
+	defaultBranch, err := fetchDefaultBranch(owner, repo)
+	if err != nil {
+		return fmt.Errorf("fetch default branch: %w", err)
+	}
+
+	runs, err := fetchRepoWorkflowRuns(owner, repo, defaultBranch)
+	if err != nil {
+		return fmt.Errorf("fetch workflow runs: %w", err)
+	}
+
+	if len(runs) == 0 {
+		msg := "no workflow runs found for this repo"
+		if wfFiles, err := fetchWorkflowFiles(owner, repo); err == nil && len(wfFiles) > 0 {
+			quoted := make([]string, len(wfFiles))
+			for i, f := range wfFiles {
+				quoted[i] = ".github/workflows/" + f
+			}
+			msg += fmt.Sprintf("\nWorkflow files in repo: %s", strings.Join(quoted, ", "))
+			msg += fmt.Sprintf("\n(check for syntax errors: github-fetch yaml validate .github/workflows/%s)", wfFiles[0])
+		}
+		return fmt.Errorf("%s", msg)
+	}
+
+	if workflowFilter != "" {
+		filtered := filterRunsByName(runs, workflowFilter)
+		if len(filtered) == 0 {
+			names := make([]string, len(runs))
+			for i, r := range runs {
+				names[i] = r.Name
+			}
+			return fmt.Errorf("no workflow runs matching %q\nAvailable workflows: %s", workflowFilter, strings.Join(names, ", "))
+		}
+		runs = filtered
+	}
+
+	if showLogs {
+		var rid int64
+		if runID != nil {
+			rid = *runID
+		}
+		return showRunLogs(w, owner, repo, runs, rid, jobFilter, fullLogs, noWait)
+	}
+
+	printRunsList(w, runs)
+	return nil
+}
+
+func printRunsList(w io.Writer, runs []WorkflowRun) {
+	var bw func(string)
+	if f, ok := w.(interface{ Write([]byte) (int, error) }); ok {
+		bw = func(s string) { f.Write([]byte(s)) }
+	} else {
+		sw := w.(interface{ WriteString(string) (int, error) })
+		bw = func(s string) { sw.WriteString(s) }
+	}
+
+	bw(fmt.Sprintf("Workflow Runs:\n\n"))
+
+	if len(runs) == 0 {
+		bw("  No workflow runs found.\n")
+		return
+	}
+
+	for _, r := range runs {
+		icon := "○"
+		switch r.Conclusion {
+		case "success":
+			icon = "\033[32m✓\033[0m"
+		case "failure":
+			icon = "\033[31m✗\033[0m"
+		case "cancelled":
+			icon = "\033[33m✗\033[0m"
+		}
+		if r.Status == "in_progress" {
+			icon = "\033[33m●\033[0m"
+		} else if r.Status == "queued" || r.Status == "waiting" || r.Status == "pending" {
+			icon = "\033[36m○\033[0m"
+		}
+
+		status := r.Conclusion
+		if r.Conclusion == "" || r.Status == "in_progress" || r.Status == "queued" || r.Status == "waiting" || r.Status == "pending" {
+			status = r.Status
+		}
+
+		bw(fmt.Sprintf("  %s  %s  %s  %s\n", icon, fmt.Sprintf("%-24s", r.Name), fmt.Sprintf("%-12s", status), r.HTMLURL))
+	}
 }
 
 func filterRunsByName(runs []WorkflowRun, nameFilter string) []WorkflowRun {
@@ -216,6 +311,7 @@ func showRunLogs(w io.Writer, owner, repo string, runs []WorkflowRun, runID int6
 	}
 
 	var buf strings.Builder
+	buf.WriteString(fmt.Sprintf("Workflow: %s (Run #%d, event: %s, branch: %s) — %s\n", targetRun.Name, targetRun.ID, targetRun.Event, targetRun.HeadBranch, targetRun.Conclusion))
 	buf.WriteString(fmt.Sprintf("Logs for %s (run #%d):\n", targetRun.Name, targetRun.ID))
 	buf.WriteString(fmt.Sprintf("URL: %s\n\n", targetRun.HTMLURL))
 
