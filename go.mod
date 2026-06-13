@@ -5,7 +5,7 @@ go 1.25.0
 require github.com/xhd2015/less-gen v0.0.19
 
 require (
-	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.13
+	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.15
 	github.com/xhd2015/gitops v0.0.14
 	github.com/xhd2015/less-flags v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
