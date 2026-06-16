@@ -215,7 +215,11 @@ func installTo(dir string, skillContent string, extraFiles []InstallFile, dryRun
 		}
 	}
 
-	fmt.Printf("Installed skill to: %s\n", absDir)
+	if willOverwrite {
+		fmt.Printf("Update skill at %s\n", absDir)
+	} else {
+		fmt.Printf("Installed skill to: %s\n", absDir)
+	}
 	fmt.Printf("  - %s\n", skillFile)
 	for _, f := range files {
 		fmt.Printf("  - %s\n", f.dest)
