@@ -1,10 +1,10 @@
 ## Preconditions
-- The github-fetch module root is `DOCTEST_ROOT` (the parent of this test tree).
-- The tests are executed by the doc-style test runner from this test tree.
+- `DOCTEST_ROOT` is `cmd/github-fetch/tests` (the parent of this test tree).
+- `findModuleRoot()` walks upward from `DOCTEST_ROOT` to locate the `github.com/xhd2015/skills` module `go.mod`.
 - A mock GitHub API server replaces the real GitHub API for deterministic tests.
 
 ## Steps
-1. Build the `github-fetch` binary from the module root.
+1. Build the `github-fetch` binary from `cmd/github-fetch` within the module.
 2. If `req.InGitRepo` is true: create a temporary git repository with a single commit, configure the specified origin remote URL, and `cd` into it.
 3. Start a mock HTTP server using the `githubmock` package, configuring it with `req.MockRuns`, `req.MockJobs`, `req.MockLogs`, and `req.MockWorkflowFiles`.
 4. Set the environment variable `GITHUB_API_BASE_URL` to the mock server URL before invoking the binary.
@@ -84,14 +84,13 @@ func Run(t *testing.T, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("find module root: %w", err)
 	}
 
-	binaryPath := filepath.Join(os.TempDir(), "github-fetch-test")
+	binaryPath := filepath.Join(t.TempDir(), "github-fetch")
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Dir = filepath.Join(moduleRoot, "cmd", "github-fetch")
 	buildOut, err := buildCmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("build github-fetch: %v\n%s", err, string(buildOut))
 	}
-	defer os.Remove(binaryPath)
 
 	var runDir string
 	if req.InGitRepo {

@@ -59,6 +59,12 @@ func handle(args []string) error {
 	switch args[0] {
 	case "pr", "fetch":
 		return handleFetchPR(args[1:])
+	case "prs", "pulls":
+		return handleListPRs(args[1:])
+	case "issues":
+		return handleListIssues(args[1:])
+	case "issue":
+		return handleIssue(args[1:])
 	case "ci", "checks":
 		return handleCI(args[1:])
 	case "yaml":

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/xhd2015/less-flags"
 )
 
 type PRInfo struct {
@@ -258,6 +260,155 @@ func fetchPRDiff(owner, repo, number string) (string, error) {
 		return "", fmt.Errorf("read diff response: %w", err)
 	}
 	return string(data), nil
+}
+
+type PRListItem struct {
+	Number  int
+	Title   string
+	State   string
+	User    string
+	HTMLURL string
+}
+
+type IssueListItem struct {
+	Number  int
+	Title   string
+	State   string
+	User    string
+	HTMLURL string
+	Labels  []string
+}
+
+type listOptions struct {
+	state   string
+	page    int
+	perPage int
+}
+
+type githubPRListResponse struct {
+	Number  int            `json:"number"`
+	Title   string         `json:"title"`
+	State   string         `json:"state"`
+	HTMLURL string         `json:"html_url"`
+	User    githubPRUser   `json:"user"`
+}
+
+type githubIssueListResponse struct {
+	Number      int                 `json:"number"`
+	Title       string              `json:"title"`
+	State       string              `json:"state"`
+	HTMLURL     string              `json:"html_url"`
+	User        githubPRUser        `json:"user"`
+	Labels      []githubIssueLabel  `json:"labels"`
+	PullRequest *struct{}           `json:"pull_request,omitempty"`
+}
+
+type githubIssueLabel struct {
+	Name string `json:"name"`
+}
+
+func parseListFlags(args []string) (listOptions, []string, error) {
+	var state string
+	var page int = 1
+	var perPage int = 30
+
+	remain, err := lessflags.String("--state", &state).
+		Int("--page", &page).
+		Int("--per-page", &perPage).
+		Parse(args)
+	if err != nil {
+		return listOptions{}, nil, err
+	}
+
+	if state == "" {
+		state = "open"
+	}
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 30
+	}
+	if perPage > 100 {
+		perPage = 100
+	}
+
+	return listOptions{state: state, page: page, perPage: perPage}, remain, nil
+}
+
+func resolveListRepo(remain []string) (owner, repo string, err error) {
+	if len(remain) > 1 {
+		return "", "", fmt.Errorf("too many arguments")
+	}
+	if len(remain) == 1 {
+		parts := strings.SplitN(remain[0], "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return "", "", fmt.Errorf("invalid repository: %q (expected owner/repo)", remain[0])
+		}
+		return parts[0], parts[1], nil
+	}
+	return getOriginRepo()
+}
+
+func apiGetWithHeaders(url string) ([]byte, http.Header, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return tryGhAPIWithHeaders(url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
+		return tryGhAPIWithHeaders(url, fmt.Errorf("HTTP %d", resp.StatusCode))
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read response: %w", err)
+	}
+	return data, resp.Header, nil
+}
+
+func tryGhAPIWithHeaders(url string, originalErr error) ([]byte, http.Header, error) {
+	data, err := tryGhAPI(url, originalErr)
+	if err != nil {
+		return nil, nil, err
+	}
+	return data, nil, nil
+}
+
+func hasNextPage(linkHeader string) bool {
+	if linkHeader == "" {
+		return false
+	}
+	for _, part := range strings.Split(linkHeader, ",") {
+		part = strings.TrimSpace(part)
+		if strings.Contains(part, `rel="next"`) || strings.Contains(part, "rel=next") {
+			return true
+		}
+	}
+	return false
+}
+
+func printListHeader(w func(string), owner, repo, state string) {
+	w(fmt.Sprintf("Repo: %s/%s (https://github.com/%s/%s)\n", owner, repo, owner, repo))
+	w(fmt.Sprintf("State: %s\n\n", state))
+}
+
+func printListItem(w func(string), number int, state, user, title string) {
+	w(fmt.Sprintf("#%d   %s   @%s   %s\n", number, state, user, title))
+}
+
+func printPaginationFooter(w func(string), page, count int, hasNext bool) {
+	w("\n---\n")
+	if hasNext {
+		w(fmt.Sprintf("Page %d (%d items). More results available — use --page %d\n", page, count, page+1))
+	} else {
+		w(fmt.Sprintf("Page %d (%d items)\n", page, count))
+	}
 }
 
 func apiGet(url string) ([]byte, error) {

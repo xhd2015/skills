@@ -9,10 +9,11 @@ import (
 )
 
 func handleFetchPR(args []string) error {
-	var showDiff, showLogs, fullLogs, noWait bool
+	var showDiff, showLogs, fullLogs, noWait, showList bool
 	var workflowFilter string
 
-	remain, err := lessflags.Bool("--diff", &showDiff).
+	remain, err := lessflags.Bool("--list", &showList).
+		Bool("--diff", &showDiff).
 		Bool("--logs", &showLogs).
 		Bool("--full", &fullLogs).
 		Bool("--no-wait", &noWait).
@@ -25,6 +26,10 @@ func handleFetchPR(args []string) error {
 			return nil
 		}
 		return err
+	}
+
+	if showList {
+		return handleListPRs(remain)
 	}
 
 	if len(remain) == 0 {
