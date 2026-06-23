@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/xhd2015/skills/install"
+	"github.com/xhd2015/skills/skill_file"
 )
 
 //go:embed SKILL.md
@@ -74,6 +75,23 @@ func handleSkill(args []string) error {
 	}
 	switch args[0] {
 	case "show":
+		rest := args[1:]
+		headerOnly := false
+		if len(rest) > 0 && rest[0] == "--header" {
+			headerOnly = true
+			rest = rest[1:]
+		}
+		if len(rest) > 0 {
+			return fmt.Errorf("unknown skill show option: %s", rest[0])
+		}
+		if headerOnly {
+			out, err := skill_file.FormatHeaderWithDelimiters(skillTemplate)
+			if err != nil {
+				return err
+			}
+			fmt.Print(out)
+			return nil
+		}
 		fmt.Print(skillTemplate)
 		return nil
 	case "install":

@@ -12,6 +12,7 @@ import (
 
 	"github.com/xhd2015/skills/cmd/go-best-practice/vet"
 	"github.com/xhd2015/skills/install"
+	"github.com/xhd2015/skills/skill_file"
 )
 
 //go:embed SKILL.md
@@ -171,6 +172,23 @@ func validateSegments(segments []string) error {
 func handleSkill(args []string) error {
 	if len(args) == 0 || args[0] != "show" {
 		return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+	}
+	rest := args[1:]
+	headerOnly := false
+	if len(rest) > 0 && rest[0] == "--header" {
+		headerOnly = true
+		rest = rest[1:]
+	}
+	if len(rest) > 0 {
+		return fmt.Errorf("unknown skill show option: %s", rest[0])
+	}
+	if headerOnly {
+		out, err := skill_file.FormatHeaderWithDelimiters(skillTemplate)
+		if err != nil {
+			return err
+		}
+		fmt.Print(out)
+		return nil
 	}
 	fmt.Print(skillTemplate)
 	return nil
