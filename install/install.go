@@ -31,26 +31,19 @@ func HandleInstall(opts InstallOptions, args []string) error {
 	if usage == "" {
 		usage = "install"
 	}
-	skillDirName := opts.SkillDirName
-	if skillDirName == "" {
-		skillDirName = opts.CursorDirName
-	}
+	skillDirName := skillDirNameFrom(opts)
 	var dryRun bool
-	var cursor bool
-	var codex bool
-	var opencode bool
-	var generalAgents bool
+	var tf TargetFlags
 	var noOverride bool
 	var force bool
-	var global bool
 	args, err := flags.Bool("--dry-run", &dryRun).
-		Bool("--cursor", &cursor).
-		Bool("--codex", &codex).
-		Bool("--opencode", &opencode).
-		Bool("--general-agents", &generalAgents).
+		Bool("--cursor", &tf.Cursor).
+		Bool("--codex", &tf.Codex).
+		Bool("--opencode", &tf.Opencode).
+		Bool("--general-agents", &tf.GeneralAgents).
 		Bool("--no-override", &noOverride).
 		Bool("--force", &force).
-		Bool("--global", &global).
+		Bool("--global", &tf.Global).
 		Help("-h,--help", fmt.Sprintf(`
 Usage: %s [OPTIONS] [<dir>]
 
@@ -77,37 +70,9 @@ Multiple --cursor/--codex/--opencode/--general-agents flags can be combined to i
 		noOverride = false
 	}
 
-	var dirs []string
-	if cursor {
-		dirs = append(dirs, filepath.Join(".cursor", "skills", skillDirName))
-	}
-	if codex {
-		dirs = append(dirs, filepath.Join(".codex", "skills", skillDirName))
-	}
-	if opencode {
-		dirs = append(dirs, filepath.Join(".opencode", "skills", skillDirName))
-	}
-	if generalAgents {
-		dirs = append(dirs, filepath.Join(".agents", "skills", skillDirName))
-	}
-	if len(dirs) == 0 {
-		if len(args) > 0 {
-			dirs = append(dirs, args[0])
-		} else {
-			dirs = append(dirs, filepath.Join(".agents", "skills", skillDirName))
-		}
-	}
-
-	if global {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("get home dir: %w", err)
-		}
-		for i, dir := range dirs {
-			if !filepath.IsAbs(dir) {
-				dirs[i] = filepath.Join(homeDir, dir)
-			}
-		}
+	dirs, err := ResolveTargetDirs(skillDirName, tf, args)
+	if err != nil {
+		return err
 	}
 
 	for _, dir := range dirs {
@@ -270,6 +235,33 @@ func sameFileMD5(path string, content []byte) (string, bool, error) {
 
 func md5Hex(content []byte) string {
 	return fmt.Sprintf("%x", md5.Sum(content))
+}
+
+func joinSkillDir(toolDir, skillDirName string) string {
+	return filepath.Join(toolDir, "skills", skillDirName)
+}
+
+func userHomeDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home dir: %w", err)
+	}
+	return homeDir, nil
+}
+
+func joinHomeIfRelative(homeDir, dir string) string {
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	return filepath.Join(homeDir, dir)
+}
+
+func absPath(dir string) (string, error) {
+	return filepath.Abs(dir)
+}
+
+func skillMDPathStat(absDir string) (os.FileInfo, error) {
+	return os.Stat(filepath.Join(absDir, "SKILL.md"))
 }
 
 func confirmOverwrite(dir string) bool {
