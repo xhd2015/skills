@@ -37,6 +37,7 @@ test harness <- stdout (up to date / update / dry-run messages)
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -74,6 +75,16 @@ func pathExists(t *testing.T, path string) bool {
 	t.Helper()
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func assertBatchStdoutPolished(t *testing.T, stdout string) {
+	t.Helper()
+	if strings.HasPrefix(stdout, "\n") {
+		t.Fatalf("stdout must not start with a blank line: %q", stdout)
+	}
+	if stdout != "" && !strings.HasSuffix(stdout, "\n") {
+		t.Fatalf("stdout must end with newline: %q", stdout)
+	}
 }
 
 func Setup(t *testing.T, req *Request) error {

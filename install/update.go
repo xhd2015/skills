@@ -119,14 +119,7 @@ func HandleUpdateMany(skills []UpdateSkill, args []string) error {
 		}
 		return err
 	}
-	var started bool
-	beginStdout := func() {
-		if !started {
-			fmt.Print("\n")
-			started = true
-		}
-	}
-	for i, skill := range skills {
+	for _, skill := range skills {
 		skillDirName := skillDirNameFrom(skill.InstallOptions)
 		dirs, err := ResolveTargetDirs(skillDirName, tf, args)
 		if err != nil {
@@ -139,26 +132,15 @@ func HandleUpdateMany(skills []UpdateSkill, args []string) error {
 			}
 		}
 		if len(installed) == 0 {
-			beginStdout()
-			msg := "skill not installed: " + updateSkillDisplayName(skill)
-			if i == len(skills)-1 {
-				fmt.Print(msg)
-			} else {
-				fmt.Println(msg)
-			}
+			fmt.Println("skill not installed: " + updateSkillDisplayName(skill))
 			continue
 		}
 		for _, dir := range installed {
-			beginStdout()
 			if err := InstallTo(dir, skill.SkillContent, skill.ExtraFiles, dryRun, false); err != nil {
 				return err
 			}
 		}
-		if i == len(skills)-1 {
-			fmt.Print(skillDirName)
-		} else {
-			fmt.Println(skillDirName)
-		}
+		fmt.Println(skillDirName)
 	}
 	return nil
 }

@@ -24,6 +24,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
+	assertBatchStdoutPolished(t, resp.Stdout)
 	count := strings.Count(resp.Stdout, "Skill is up to date")
 	if count != 2 {
 		t.Fatalf("expected 2 up-to-date lines, got %d:\n%s", count, resp.Stdout)

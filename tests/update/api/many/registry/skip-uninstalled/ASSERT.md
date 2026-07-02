@@ -28,11 +28,12 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
+	assertBatchStdoutPolished(t, resp.Stdout)
 	if !strings.Contains(resp.Stdout, "Skill is up to date") {
 		t.Fatalf("expected up-to-date line for alpha:\n%s", resp.Stdout)
 	}
-	assert.Output(t, resp.Stdout, `
-<contains>
+	assert.Output(t, resp.Stdout, `` +
+`<contains>
 skill not installed: skill-beta
 </contains>`)
 	if pathExists(t, filepath.Join(resp.WorkDir, skillAgentsDir("skill-beta"))) {

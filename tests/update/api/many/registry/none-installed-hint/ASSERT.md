@@ -37,8 +37,9 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
-	assert.Output(t, resp.Stdout, `
-<contains>
+	assertBatchStdoutPolished(t, resp.Stdout)
+	assert.Output(t, resp.Stdout, `` +
+`<contains>
 skill not installed: skill-alpha
 skill not installed: skill-beta
 </contains>`)

@@ -34,8 +34,9 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
-	assert.Output(t, resp.Stdout, `
-<contains>
+	assertBatchStdoutPolished(t, resp.Stdout)
+	assert.Output(t, resp.Stdout, `` +
+`<contains>
 Skill is up to date
 skill-alpha
 skill not installed: skill-beta
