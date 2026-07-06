@@ -21,6 +21,7 @@ Commands:
   yaml validate <path>                  Validate a GitHub Actions workflow file
   work-on <url-or-number>              Create a git worktree for the PR
   push [<url-or-number>] [-f]          Push current HEAD to the PR's source branch
+  status                               Show GitHub auth status and API rate limits
   skill show                           Show the content of SKILL.md
   skill install [<dir>]                Install skill SKILL.md to a directory
 
@@ -74,6 +75,8 @@ func handle(args []string) error {
 		return handleWorkon(args[1:])
 	case "push":
 		return handlePush(args[1:])
+	case "status":
+		return handleStatus(args[1:])
 	case "skill":
 		return handleSkill(args[1:])
 	default:

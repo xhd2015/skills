@@ -241,7 +241,7 @@ func fetchPRDiff(owner, repo, number string) (string, error) {
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3.diff")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := authenticatedDo(req)
 	if err != nil {
 		return tryGhDiff(owner, repo, number, err)
 	}
@@ -351,7 +351,7 @@ func resolveListRepo(remain []string) (owner, repo string, err error) {
 }
 
 func apiGetWithHeaders(url string) ([]byte, http.Header, error) {
-	resp, err := http.Get(url)
+	resp, err := authenticatedGet(url)
 	if err != nil {
 		return tryGhAPIWithHeaders(url, err)
 	}
@@ -412,7 +412,7 @@ func printPaginationFooter(w func(string), page, count int, hasNext bool) {
 }
 
 func apiGet(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+	resp, err := authenticatedGet(url)
 	if err != nil {
 		return tryGhAPI(url, err)
 	}
@@ -666,7 +666,7 @@ func fetchWorkflowFiles(owner, repo string) ([]string, error) {
 
 func fetchJobLogs(owner, repo string, jobID int64) (string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%d/logs", getAPIBaseURL(), owner, repo, jobID)
-	resp, err := http.Get(url)
+	resp, err := authenticatedGet(url)
 	if err != nil {
 		return "", fmt.Errorf("fetch job logs: %w", err)
 	}
