@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/xhd2015/skills/playwrightdebug"
 )
 
 func TestHelpText(t *testing.T) {
@@ -23,7 +25,7 @@ func TestHelpText(t *testing.T) {
 }
 
 func TestCacheDir(t *testing.T) {
-	dir := cacheDir()
+	dir := playwrightdebug.DefaultCacheDir()
 	if !strings.HasSuffix(dir, ".playwright-debug/node_package") {
 		t.Errorf("unexpected cache dir: %s", dir)
 	}

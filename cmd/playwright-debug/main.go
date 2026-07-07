@@ -1,23 +1,20 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/xhd2015/skills/install"
+	"github.com/xhd2015/skills/playwrightdebug"
 	"github.com/xhd2015/skills/skill_file"
 )
 
 //go:embed SKILL.md
 var skillTemplate string
-
-//go:embed bootstrap.cjs
-var bootstrapScript string
 
 const help = `Usage: playwright-debug <command> [ARGS]
 
@@ -61,6 +58,9 @@ func handle(args []string) error {
 		fmt.Print(help)
 		return nil
 	}
+	if len(args) > 1 && (args[0] == "-h" || args[0] == "--help") {
+		return handleRunEval(args[1], args[2:])
+	}
 
 	if script, rest, ok := extractEvalFlag(args); ok {
 		if script == "" {
@@ -74,7 +74,7 @@ func handle(args []string) error {
 		if len(args) < 2 {
 			return fmt.Errorf("run requires a .js script file argument")
 		}
-		if err := validateRunFileArg(args[1]); err != nil {
+		if err := playwrightdebug.ValidateScriptFile(args[1]); err != nil {
 			return err
 		}
 		return handleRunFile(args[1], args[2:]...)
@@ -115,23 +115,6 @@ func isScriptFile(path string) bool {
 	return !info.IsDir()
 }
 
-func validateRunFileArg(path string) error {
-	if !hasJSSuffix(path) {
-		return fmt.Errorf("run requires an existing .js file, not an inline script")
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("script file not found: %s", path)
-		}
-		return fmt.Errorf("cannot access script file %s: %w", path, err)
-	}
-	if info.IsDir() {
-		return fmt.Errorf("run requires an existing .js file: %s is a directory", path)
-	}
-	return nil
-}
-
 func handleSkill(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
@@ -168,109 +151,21 @@ func handleSkill(args []string) error {
 	}
 }
 
-func cacheDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".playwright-debug", "node_package")
-}
-
-func playwrightEnv(cacheDir string) []string {
-	nodePath := filepath.Join(cacheDir, "node_modules")
-	env := os.Environ()
-	for i, e := range env {
-		if strings.HasPrefix(e, "NODE_PATH=") {
-			existing := strings.TrimPrefix(e, "NODE_PATH=")
-			if existing != "" {
-				nodePath = nodePath + string(os.PathListSeparator) + existing
-			}
-			env = append(env[:i], env[i+1:]...)
-			break
-		}
-	}
-	return append(env, "NODE_PATH="+nodePath)
-}
-
-func ensurePlaywright() (string, error) {
-	dir := cacheDir()
-
-	packageJSON := filepath.Join(dir, "package.json")
-	if _, err := os.Stat(packageJSON); os.IsNotExist(err) {
-		fmt.Println("Initializing playwright cache directory...")
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return "", fmt.Errorf("create cache dir: %w", err)
-		}
-		cmd := exec.Command("npm", "init", "-y")
-		cmd.Dir = dir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("npm init: %w", err)
-		}
-	}
-
-	nodeModules := filepath.Join(dir, "node_modules", "playwright")
-	if _, err := os.Stat(nodeModules); os.IsNotExist(err) {
-		fmt.Println("Installing playwright...")
-		cmd := exec.Command("npm", "install", "playwright")
-		cmd.Dir = dir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("npm install playwright: %w", err)
-		}
-
-		fmt.Println("Installing Chromium browser...")
-		npx := "npx"
-		if runtime.GOOS == "windows" {
-			npx = "npx.cmd"
-		}
-		cmd = exec.Command(npx, "playwright", "install", "chromium")
-		cmd.Dir = dir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("playwright install chromium: %w", err)
-		}
-	}
-
-	return dir, nil
-}
-
 func handleRunFile(scriptPath string, scriptArgs ...string) error {
-	if err := validateRunFileArg(scriptPath); err != nil {
-		return err
+	err := playwrightdebug.RunFile(context.Background(), playwrightdebug.RunOptions{
+		ScriptPath: scriptPath,
+		ScriptArgs: scriptArgs,
+		Stdout:     os.Stdout,
+		Stderr:     os.Stderr,
+	})
+	if exitErr, ok := err.(*playwrightdebug.ExitError); ok {
+		os.Exit(exitErr.Code)
 	}
-
-	absPath, err := filepath.Abs(scriptPath)
-	if err != nil {
-		return fmt.Errorf("resolve script path: %w", err)
-	}
-
-	dir, err := ensurePlaywright()
-	if err != nil {
-		return err
-	}
-
-	bootstrapPath := filepath.Join(dir, "bootstrap.cjs")
-	if err := os.WriteFile(bootstrapPath, []byte(bootstrapScript), 0644); err != nil {
-		return fmt.Errorf("write bootstrap.cjs: %w", err)
-	}
-
-	cmd := exec.Command("node", append([]string{bootstrapPath, absPath}, scriptArgs...)...)
-	cmd.Dir = dir
-	cmd.Env = playwrightEnv(dir)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
-		return fmt.Errorf("playwright script failed: %w", err)
-	}
-	return nil
+	return err
 }
 
 func handleRunEval(script string, scriptArgs []string) error {
-	dir, err := ensurePlaywright()
+	dir, err := playwrightdebug.EnsurePlaywright("", os.Stdout, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -291,7 +186,7 @@ const { chromium } = require('playwright');
 
 	cmd := exec.Command("node", append([]string{"-e", wrapper}, scriptArgs...)...)
 	cmd.Dir = dir
-	cmd.Env = playwrightEnv(dir)
+	cmd.Env = playwrightdebug.PlaywrightEnv(dir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
