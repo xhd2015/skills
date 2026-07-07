@@ -2,7 +2,9 @@
 
 Doc-style tests for cmd/playwright-debug CLI routing between file mode
 (existing .js scripts with require and top-level await) and eval mode
-(adhoc snippets via -e / --eval or bare non-file args).
+(adhoc snippets via -e / --eval or bare non-file args). Trailing arguments
+after a script file or eval snippet forward to the Node subprocess as
+`process.argv` from index 3.
 
 # DSN (Domain Specific Notion)
 
@@ -16,8 +18,10 @@ Participants:
 - File runner writes embedded bootstrap.cjs to the playwright cache dir,
   chdirs to the script directory, and executes the user file via AsyncFunction
   with injected browser, page, chromium, require, __filename, and __dirname.
+  Trailing args after the script path are appended to the node command line.
 - Eval runner wraps the snippet in an async IIFE and runs node -e (existing
-  behavior).
+  behavior). Trailing args after the eval script string are appended to the
+  node command line.
 - Playwright cache (~/.playwright-debug/node_package/) supplies the
   playwright npm package and Chromium for script execution leaves.
 
@@ -32,40 +36,54 @@ playwright-debug-file-mode/
 │   ├── errors/
 │   │   ├── missing-arg/
 │   │   ├── non-js-script/
-│   │   ├── file-not-found/
-│   │   └── too-many-args/
+│   │   └── file-not-found/
 │   └── execution/
 │       ├── simple-file/
 │       ├── toplevel-await/
-│       └── with-require/
+│       ├── with-require/
+│       └── with-script-args/
+│           ├── run-with-args/
+│           ├── run-script-help/
+│           └── too-many-args/
 ├── eval-flag/
 │   ├── errors/
-│   │   ├── missing-script/
-│   │   └── extra-args/
+│   │   └── missing-script/
 │   └── execution/
-│       └── short-flag/
+│       ├── short-flag/
+│       └── with-script-args/
+│           ├── eval-with-args/
+│           ├── long-eval-with-args/
+│           └── extra-args/
 └── bare-arg/
     ├── file-alias/
-    │   └── simple-file/
+    │   ├── simple-file/
+    │   ├── bare-alias-with-args/
+    │   └── script-help/
     └── eval-script/
         └── console-log/
 ```
 
 ## Test Index
 
-- help/no-args: no args prints usage, exit 0 (fast)
-- help/with-flag: -h prints usage, exit 0 (fast)
+- help/no-args: no args prints usage including process.argv pass-through, exit 0 (fast)
+- help/with-flag: -h prints usage including process.argv pass-through, exit 0 (fast)
 - run-command/errors/missing-arg: run alone → file required error (fast)
 - run-command/errors/non-js-script: run with inline await snippet → requires existing .js file (fast)
 - run-command/errors/file-not-found: run missing.js → file not found (fast)
-- run-command/errors/too-many-args: run with two files → exactly one file (fast)
-- eval-flag/errors/missing-script: -e without script → error (fast)
-- eval-flag/errors/extra-args: --eval with extra positional arg → error (fast)
 - run-command/execution/simple-file: run simple-eval.js → file-mode-ok (slow)
 - run-command/execution/toplevel-await: top-level await on about:blank (slow)
 - run-command/execution/with-require: relative require() resolves (slow)
+- run-command/execution/with-script-args/run-with-args: run print-argv.js -o /tmp/out.png → ["-o","/tmp/out.png"] (slow)
+- run-command/execution/with-script-args/run-script-help: run print-help.js --help → SCRIPT_HELP_OK, not CLI help (slow)
+- run-command/execution/with-script-args/too-many-args: run print-argv.js extra → ["extra"] (slow, amended spec)
+- eval-flag/errors/missing-script: -e without script → error (fast)
 - eval-flag/execution/short-flag: -e console.log eval-ok (slow)
+- eval-flag/execution/with-script-args/eval-with-args: -e argv script baz → ["baz"] (slow)
+- eval-flag/execution/with-script-args/long-eval-with-args: --eval argv script a b → ["a","b"] (slow)
+- eval-flag/execution/with-script-args/extra-args: --eval argv script extra → ["extra"] (slow, amended spec)
 - bare-arg/file-alias/simple-file: bare .js path routes to file mode (slow)
+- bare-arg/file-alias/bare-alias-with-args: bare print-argv.js foo bar → ["foo","bar"] (slow)
+- bare-arg/file-alias/script-help: bare print-help.js --help → SCRIPT_HELP_OK, not CLI help (slow)
 - bare-arg/eval-script/console-log: bare script string routes to eval mode (slow)
 
 ## How to Run
@@ -78,7 +96,7 @@ doctest test -v --label slow ./tests/playwright-debug-file-mode
 
 ## Version
 
-0.0.2
+0.0.3
 
 ```go
 import (

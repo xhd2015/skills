@@ -22,18 +22,21 @@ var bootstrapScript string
 const help = `Usage: playwright-debug <command> [ARGS]
 
 Commands:
-  run <file.js>         Run an existing Playwright .js script file
-  skill show            Show the content of SKILL.md
-  skill install [<dir>] Install skill SKILL.md to a directory
+  run <file.js> [args...]  Run an existing Playwright .js script file
+  skill show               Show the content of SKILL.md
+  skill install [<dir>]    Install skill SKILL.md to a directory
 
 Invocation modes:
-  playwright-debug <file.js>              Run script file (file alias)
-  playwright-debug run <file.js>          Explicit file mode (file required)
-  playwright-debug -e '<script>'          Adhoc eval (short flag)
-  playwright-debug --eval '<script>'      Adhoc eval (long flag)
-  playwright-debug '<script>'             Eval when arg is not an existing .js file
+  playwright-debug <file.js> [args...]         Run script file (file alias)
+  playwright-debug run <file.js> [args...]     Explicit file mode (file required)
+  playwright-debug -e '<script>' [args...]     Adhoc eval (short flag)
+  playwright-debug --eval '<script>' [args...] Adhoc eval (long flag)
+  playwright-debug '<script>'                  Eval when arg is not an existing .js file
 
 The run command requires an existing .js script file on disk.
+
+Trailing arguments after a script file or eval snippet are passed through to
+the Node subprocess as process.argv (from index 3).
 
 File mode provides: browser, page, chromium, require, __filename, __dirname
 Eval mode provides: browser, page, chromium
@@ -54,22 +57,16 @@ func handle(args []string) error {
 		fmt.Print(help)
 		return nil
 	}
-
-	for _, a := range args {
-		if a == "-h" || a == "--help" {
-			fmt.Print(help)
-			return nil
-		}
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		fmt.Print(help)
+		return nil
 	}
 
 	if script, rest, ok := extractEvalFlag(args); ok {
 		if script == "" {
 			return fmt.Errorf("-e/--eval requires a script argument")
 		}
-		if len(rest) > 0 {
-			return fmt.Errorf("unexpected arguments after --eval: %v", rest)
-		}
-		return handleRunEval(script)
+		return handleRunEval(script, rest)
 	}
 
 	switch args[0] {
@@ -77,20 +74,17 @@ func handle(args []string) error {
 		if len(args) < 2 {
 			return fmt.Errorf("run requires a .js script file argument")
 		}
-		if len(args) > 2 {
-			return fmt.Errorf("run accepts exactly one .js file argument")
-		}
 		if err := validateRunFileArg(args[1]); err != nil {
 			return err
 		}
-		return handleRunFile(args[1])
+		return handleRunFile(args[1], args[2:]...)
 	case "skill":
 		return handleSkill(args[1:])
 	default:
-		if len(args) == 1 && isScriptFile(args[0]) {
-			return handleRunFile(args[0])
+		if isScriptFile(args[0]) {
+			return handleRunFile(args[0], args[1:]...)
 		}
-		return handleRunEval(strings.Join(args, " "))
+		return handleRunEval(strings.Join(args, " "), nil)
 	}
 }
 
@@ -241,7 +235,7 @@ func ensurePlaywright() (string, error) {
 	return dir, nil
 }
 
-func handleRunFile(scriptPath string) error {
+func handleRunFile(scriptPath string, scriptArgs ...string) error {
 	if err := validateRunFileArg(scriptPath); err != nil {
 		return err
 	}
@@ -261,7 +255,7 @@ func handleRunFile(scriptPath string) error {
 		return fmt.Errorf("write bootstrap.cjs: %w", err)
 	}
 
-	cmd := exec.Command("node", bootstrapPath, absPath)
+	cmd := exec.Command("node", append([]string{bootstrapPath, absPath}, scriptArgs...)...)
 	cmd.Dir = dir
 	cmd.Env = playwrightEnv(dir)
 	cmd.Stdout = os.Stdout
@@ -275,7 +269,7 @@ func handleRunFile(scriptPath string) error {
 	return nil
 }
 
-func handleRunEval(script string) error {
+func handleRunEval(script string, scriptArgs []string) error {
 	dir, err := ensurePlaywright()
 	if err != nil {
 		return err
@@ -295,7 +289,7 @@ const { chromium } = require('playwright');
 })();
 `, script)
 
-	cmd := exec.Command("node", "-e", wrapper)
+	cmd := exec.Command("node", append([]string{"-e", wrapper}, scriptArgs...)...)
 	cmd.Dir = dir
 	cmd.Env = playwrightEnv(dir)
 	cmd.Stdout = os.Stdout

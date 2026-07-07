@@ -6,6 +6,7 @@
 - stdout mentions `-e` or `--eval` for adhoc eval.
 - stdout indicates bare existing `.js` path is accepted (file alias).
 - stdout states `run` requires an existing script file.
+- stdout mentions trailing script arguments are passed through to `process.argv`.
 - stdout ends with a newline.
 
 ## Side Effects
@@ -49,6 +50,9 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	}
 	if !strings.Contains(lower, "file") {
 		t.Fatalf("stdout must describe file mode or file alias:\n%s", out)
+	}
+	if !strings.Contains(out, "process.argv") {
+		t.Fatalf("stdout must mention process.argv for script arg pass-through:\n%s", out)
 	}
 	if len(out) == 0 || out[len(out)-1] != '\n' {
 		t.Fatalf("stdout must end with trailing newline:\n%q", out)

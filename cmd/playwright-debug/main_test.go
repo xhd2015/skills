@@ -86,8 +86,8 @@ func TestHandleRunHelpInArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle(--help with args): %v", err)
 	}
-	if !strings.Contains(output, "Usage:") {
-		t.Errorf("help output missing Usage: %s", output)
+	if strings.Contains(output, "Usage:") {
+		t.Errorf("CLI help must not be shown when --help appears with other args, got: %s", output)
 	}
 }
 

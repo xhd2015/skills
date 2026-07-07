@@ -30,9 +30,19 @@ Available variables in file mode:
 # Run a script file explicitly
 playwright-debug run ./my-script.js
 
-# Bare file alias (single existing .js path)
+# Bare file alias (existing .js path)
 playwright-debug ./my-script.js
+
+# Forward trailing args to process.argv (from index 3)
+playwright-debug run ./my-script.js -o /tmp/screenshot.png
+playwright-debug ./my-script.js --verbose
 ```
+
+Trailing arguments after a script file or eval snippet are passed through to
+the Node subprocess as `process.argv` (from index 3).
+
+`--help` after a script path is forwarded to the script (CLI help is shown only
+for bare `-h`/`--help` with no other arguments).
 
 ### Eval — Run an adhoc script snippet
 
@@ -48,6 +58,10 @@ Available variables in eval mode:
 # Explicit eval flag
 playwright-debug -e 'console.log("eval-ok")'
 playwright-debug --eval 'await page.goto("https://example.com"); console.log(await page.title());'
+
+# Forward trailing args to process.argv (from index 3)
+playwright-debug -e 'console.log(process.argv.slice(3))' foo bar
+playwright-debug --eval 'console.log(process.argv.slice(3))' --output /tmp/out.png
 
 # Bare script string (when the argument is not an existing .js file)
 playwright-debug 'await page.goto("https://example.com"); console.log(await page.title());'

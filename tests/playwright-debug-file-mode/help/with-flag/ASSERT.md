@@ -3,6 +3,7 @@
 - Exit code 0.
 - stdout contains `Usage:`.
 - stdout mentions `run`, eval flags, and file alias (same as no-args help).
+- stdout mentions trailing script arguments are passed through to `process.argv`.
 
 ## Side Effects
 
@@ -42,6 +43,9 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	}
 	if !strings.Contains(lower, ".js") {
 		t.Fatalf("stdout must mention .js:\n%s", out)
+	}
+	if !strings.Contains(out, "process.argv") {
+		t.Fatalf("stdout must mention process.argv for script arg pass-through:\n%s", out)
 	}
 }
 ```

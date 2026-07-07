@@ -16,7 +16,8 @@ eval runner -> node -e -> playwright -> script stdout
 ## Preconditions
 
 - Module root is two levels above `DOCTEST_ROOT` (`go.mod` at `github.com/xhd2015/skills`).
-- Shared fixtures live in `DOCTEST_ROOT/testdata/`.
+- Shared fixtures live in `DOCTEST_ROOT/testdata/` (including `print-argv.js` for
+  script-arg forwarding leaves and `print-help.js` for script `--help` forwarding).
 - The `playwright-debug` binary is built once per `doctest test` session into a
   temp cache keyed by `DOCTEST_SESSION_ID`.
 - Fast routing leaves expect failures **before** playwright install; slow leaves
