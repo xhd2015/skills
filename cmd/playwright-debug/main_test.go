@@ -70,7 +70,11 @@ func TestHandleRunMissingScript(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for run without script")
 	}
-	if !strings.Contains(err.Error(), "requires a JavaScript script") {
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "require") {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !strings.Contains(msg, "file") && !strings.Contains(msg, ".js") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

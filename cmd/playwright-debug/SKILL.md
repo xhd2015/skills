@@ -12,17 +12,44 @@ A CLI tool for running Playwright browser automation scripts with automatic setu
 
 ## Commands
 
-### run — Run a Playwright script
+### run — Run a Playwright script file
 
-Runs a JavaScript snippet in a headless Chromium browser. The script is automatically wrapped with browser/page setup.
+Runs an existing `.js` script file in a headless Chromium browser. The file is
+executed with top-level `await` support and a `require()` resolver relative to
+the script directory.
 
-Available variables in your script:
+Available variables in file mode:
+- `browser` — Chromium browser instance
+- `page` — A new browser page
+- `chromium` — Playwright's chromium launcher
+- `require` — Node require scoped to the script file
+- `__filename` — Absolute path to the script file
+- `__dirname` — Directory containing the script file
+
+```bash
+# Run a script file explicitly
+playwright-debug run ./my-script.js
+
+# Bare file alias (single existing .js path)
+playwright-debug ./my-script.js
+```
+
+### Eval — Run an adhoc script snippet
+
+Runs a JavaScript snippet in a headless Chromium browser. The script is
+automatically wrapped with browser/page setup.
+
+Available variables in eval mode:
 - `browser` — Chromium browser instance
 - `page` — A new browser page
 - `chromium` — Playwright's chromium launcher
 
 ```bash
-# Navigate to a page and print the title
+# Explicit eval flag
+playwright-debug -e 'console.log("eval-ok")'
+playwright-debug --eval 'await page.goto("https://example.com"); console.log(await page.title());'
+
+# Bare script string (when the argument is not an existing .js file)
 playwright-debug 'await page.goto("https://example.com"); console.log(await page.title());'
 
 # Monitor network requests
