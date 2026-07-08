@@ -132,47 +132,69 @@ func EnsurePlaywright(cacheDir string, stdout, stderr io.Writer) (string, error)
 		stderr = os.Stderr
 	}
 
+	if playwrightInstalled(cacheDir) {
+		return cacheDir, nil
+	}
+
+	if err := withEnsureLock(cacheDir, func() error {
+		return ensurePlaywrightLocked(cacheDir, stdout, stderr)
+	}); err != nil {
+		return "", err
+	}
+
+	return cacheDir, nil
+}
+
+func playwrightInstalled(cacheDir string) bool {
+	nodeModules := filepath.Join(cacheDir, "node_modules", "playwright")
+	_, err := os.Stat(nodeModules)
+	return err == nil
+}
+
+func ensurePlaywrightLocked(cacheDir string, stdout, stderr io.Writer) error {
+	if playwrightInstalled(cacheDir) {
+		return nil
+	}
+
 	packageJSON := filepath.Join(cacheDir, "package.json")
 	if _, err := os.Stat(packageJSON); os.IsNotExist(err) {
 		fmt.Fprintln(stdout, "Initializing playwright cache directory...")
-		if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-			return "", fmt.Errorf("create cache dir: %w", err)
-		}
 		cmd := exec.Command("npm", "init", "-y")
 		cmd.Dir = cacheDir
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
 		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("npm init: %w", err)
+			return fmt.Errorf("npm init: %w", err)
 		}
 	}
 
-	nodeModules := filepath.Join(cacheDir, "node_modules", "playwright")
-	if _, err := os.Stat(nodeModules); os.IsNotExist(err) {
-		fmt.Fprintln(stdout, "Installing playwright...")
-		cmd := exec.Command("npm", "install", "playwright")
-		cmd.Dir = cacheDir
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("npm install playwright: %w", err)
-		}
-
-		fmt.Fprintln(stdout, "Installing Chromium browser...")
-		npx := "npx"
-		if runtime.GOOS == "windows" {
-			npx = "npx.cmd"
-		}
-		cmd = exec.Command(npx, "playwright", "install", "chromium")
-		cmd.Dir = cacheDir
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("playwright install chromium: %w", err)
-		}
+	if playwrightInstalled(cacheDir) {
+		return nil
 	}
 
-	return cacheDir, nil
+	fmt.Fprintln(stdout, "Installing playwright...")
+	cmd := exec.Command("npm", "install", "playwright")
+	cmd.Dir = cacheDir
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("npm install playwright: %w", err)
+	}
+
+	fmt.Fprintln(stdout, "Installing Chromium browser...")
+	npx := "npx"
+	if runtime.GOOS == "windows" {
+		npx = "npx.cmd"
+	}
+	cmd = exec.Command(npx, "playwright", "install", "chromium")
+	cmd.Dir = cacheDir
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("playwright install chromium: %w", err)
+	}
+
+	return nil
 }
 
 // PlaywrightEnv returns process environment with NODE_PATH set for the cache directory.
