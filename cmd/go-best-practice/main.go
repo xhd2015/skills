@@ -23,14 +23,15 @@ var topicsFS embed.FS
 
 const topicsDir = "topics"
 
-	const help = `
+const help = `
 Usage: go-best-practice <command> [ARGS]
        go-best-practice <topic>[/<sub-topic>[/...]]
 
 Commands:
-  install [<dir>]    Install SKILL.md + topics to a directory (or use --cursor)
-  skill show         Show the content of SKILL.md
-  topics             List all available top-level topics
+  install [<dir>]          Install SKILL.md + topics to a directory (or use --cursor)
+  skill show               Show the content of SKILL.md
+  skill install [<dir>]    Install SKILL.md + topics to a directory
+  topics                   List all available top-level topics
   vet [flags] [dirs] Check codebase for best-practice violations
   <topic-path>       Print the detailed content for a topic or sub-topic
 
@@ -170,28 +171,35 @@ func validateSegments(segments []string) error {
 }
 
 func handleSkill(args []string) error {
-	if len(args) == 0 || args[0] != "show" {
-		return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+	if len(args) == 0 {
+		return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
 	}
-	rest := args[1:]
-	headerOnly := false
-	if len(rest) > 0 && rest[0] == "--header" {
-		headerOnly = true
-		rest = rest[1:]
-	}
-	if len(rest) > 0 {
-		return fmt.Errorf("unknown skill show option: %s", rest[0])
-	}
-	if headerOnly {
-		out, err := skill_file.FormatHeaderWithDelimiters(skillTemplate)
-		if err != nil {
-			return err
+	switch args[0] {
+	case "show":
+		rest := args[1:]
+		headerOnly := false
+		if len(rest) > 0 && rest[0] == "--header" {
+			headerOnly = true
+			rest = rest[1:]
 		}
-		fmt.Print(out)
+		if len(rest) > 0 {
+			return fmt.Errorf("unknown skill show option: %s", rest[0])
+		}
+		if headerOnly {
+			out, err := skill_file.FormatHeaderWithDelimiters(skillTemplate)
+			if err != nil {
+				return err
+			}
+			fmt.Print(out)
+			return nil
+		}
+		fmt.Print(skillTemplate)
 		return nil
+	case "install":
+		return handleInstall(args[1:])
+	default:
+		return fmt.Errorf("unknown skill sub-command: %s (expected `skill show` or `skill install`)", args[0])
 	}
-	fmt.Print(skillTemplate)
-	return nil
 }
 
 func handleInstall(args []string) error {

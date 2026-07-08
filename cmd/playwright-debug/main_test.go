@@ -9,6 +9,21 @@ import (
 	"github.com/xhd2015/skills/playwrightdebug"
 )
 
+func TestEmbeddedSkillMDNoInstallGuidelines(t *testing.T) {
+	forbidden := []string{
+		"skill install",
+		"skill show",
+		"install --cursor",
+		"install --global",
+	}
+	lower := strings.ToLower(skillTemplate)
+	for _, phrase := range forbidden {
+		if strings.Contains(lower, phrase) {
+			t.Errorf("SKILL.md must not document CLI install/show plumbing (%q found); use --help and README instead", phrase)
+		}
+	}
+}
+
 func TestHelpText(t *testing.T) {
 	if !strings.Contains(help, "playwright-debug") {
 		t.Error("help text missing playwright-debug reference")

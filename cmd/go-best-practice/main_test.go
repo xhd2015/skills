@@ -253,6 +253,21 @@ func TestHandleNoArgs(t *testing.T) {
 	}
 }
 
+func TestEmbeddedSkillMDNoInstallGuidelines(t *testing.T) {
+	forbidden := []string{
+		"skill install",
+		"skill show",
+		"install --cursor",
+		"install --global",
+	}
+	lower := strings.ToLower(skillTemplate)
+	for _, phrase := range forbidden {
+		if strings.Contains(lower, phrase) {
+			t.Errorf("SKILL.md must not document CLI install/show plumbing (%q found); use --help and README instead", phrase)
+		}
+	}
+}
+
 func TestHandleSkillShow(t *testing.T) {
 	output, err := captureStdout(t, func() error {
 		return handle([]string{"skill", "show"})

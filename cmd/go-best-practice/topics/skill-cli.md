@@ -20,6 +20,23 @@ my-skill/
 followed by the skill's markdown body (topic index, usage examples,
 etc.).
 
+## SKILL.md content rules
+
+`SKILL.md` is the skill definition the agent reads when the skill is
+loaded. It must describe **what the skill does and how to use its
+domain commands** — not CLI plumbing.
+
+**Do not put in `SKILL.md`:**
+
+- `skill install` usage or examples
+- Top-level `install` examples (`install --cursor`, `install --global`, etc.)
+- `skill show` usage (agents load skills via the editor, not CLI meta-commands)
+
+**Document installation elsewhere:**
+
+- CLI `--help` text (`skill install` subcommand and flags)
+- Project `README.md` (`go install` + `skill install --cursor` examples)
+
 ```yaml
 ---
 name: my-skill
@@ -57,11 +74,18 @@ straightforward — just print the embedded string:
 
 ```go
 func handleSkill(args []string) error {
-    if len(args) == 0 || args[0] != "show" {
-        return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+    if len(args) == 0 {
+        return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
     }
-    fmt.Print(skillTemplate)
-    return nil
+    switch args[0] {
+    case "show":
+        fmt.Print(skillTemplate)
+        return nil
+    case "install":
+        return handleInstall(args[1:])
+    default:
+        return fmt.Errorf("unknown skill sub-command: %s (expected `skill show` or `skill install`)", args[0])
+    }
 }
 ```
 
@@ -176,11 +200,18 @@ func handle(args []string) error {
 }
 
 func handleSkill(args []string) error {
-    if len(args) == 0 || args[0] != "show" {
-        return fmt.Errorf("unknown skill sub-command: expected `skill show`")
+    if len(args) == 0 {
+        return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
     }
-    fmt.Print(skillTemplate)
-    return nil
+    switch args[0] {
+    case "show":
+        fmt.Print(skillTemplate)
+        return nil
+    case "install":
+        return handleInstall(args[1:])
+    default:
+        return fmt.Errorf("unknown skill sub-command: %s (expected `skill show` or `skill install`)", args[0])
+    }
 }
 
 func handleInstall(args []string) error {
@@ -269,9 +300,10 @@ Usage: my-skill <command> [ARGS]
        my-skill <topic>[/<sub-topic>[/...]]
 
 Commands:
-  install [<dir>]    Install SKILL.md + topics to a directory (or use --cursor)
-  skill show         Show the content of SKILL.md
-  <topic-path>       Print the detailed content for a topic or sub-topic
+  install [<dir>]          Install SKILL.md + topics to a directory (or use --cursor)
+  skill show               Show the content of SKILL.md
+  skill install [<dir>]    Install SKILL.md + topics to a directory
+  <topic-path>             Print the detailed content for a topic or sub-topic
 `
 ```
 

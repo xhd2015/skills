@@ -40,17 +40,3 @@ github-fetch push https://github.com/xhd2015/xgo/pull/379
 github-fetch push 379
 github-fetch push -f    # force push, auto-detect PR from branch name
 ```
-
-### skill show — Show this SKILL.md
-
-```bash
-github-fetch skill show
-```
-
-### skill install — Install this skill
-
-```bash
-github-fetch skill install              # install to .agents/skills/github-fetch
-github-fetch skill install --cursor     # install to .cursor/skills/github-fetch
-github-fetch skill install ./some/dir   # install to a custom directory
-```

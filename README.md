@@ -22,5 +22,5 @@ Run Playwright browser automation scripts with automatic setup.
 ```bash
 go install github.com/xhd2015/skills/cmd/playwright-debug@latest
 playwright-debug 'await page.goto("https://example.com"); console.log(await page.title());'
-playwright-debug install --cursor   # install as cursor skill
+playwright-debug skill install --cursor   # install as cursor skill
 ```
