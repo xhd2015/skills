@@ -1,6 +1,6 @@
 # Scenario
 
-**Feature**: top-level `install` remains backward-compatible with `skill install`
+**Feature**: top-level `install` remains backward-compatible with `skill --install`
 
 ```
 # legacy entry point still routes to install handler

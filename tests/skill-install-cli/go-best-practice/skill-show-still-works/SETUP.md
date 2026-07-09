@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: `skill show` continues to work after adding `skill install`
+**Feature**: `skill --show` continues to work after install flag migration
 
 ```
-# regression: skill show prints embedded SKILL.md
-user -> go-best-practice skill show -> stdout contains go-best-practice
+# regression: skill --show prints embedded SKILL.md
+user -> go-best-practice skill --show -> stdout contains go-best-practice
 ```
 
 ## Preconditions
@@ -13,11 +13,11 @@ user -> go-best-practice skill show -> stdout contains go-best-practice
 
 ## Steps
 
-1. Set `req.Args = ["skill", "show"]`.
+1. Set `req.Args = ["skill", "--show"]`.
 
 ```go
 func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"skill", "show"}
+	req.Args = []string{"skill", "--show"}
 	return nil
 }
 ```

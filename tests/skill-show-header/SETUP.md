@@ -1,13 +1,13 @@
 # Scenario
 
-**Feature**: skill CLI binaries support `skill show --header`
+**Feature**: skill CLI binaries support `skill --show --header`
 
 ```
-# user invokes skill show on a CLI binary
+# user invokes skill --show on a CLI binary
 user -> skill CLI -> embedded SKILL.md content
 
 # header-only mode trims body
-user -> skill CLI (skill show --header) -> YAML frontmatter only
+user -> skill CLI (skill --show --header) -> YAML frontmatter only
 ```
 
 ## Preconditions
@@ -18,11 +18,12 @@ user -> skill CLI (skill show --header) -> YAML frontmatter only
 ## Steps
 
 1. Build `go-best-practice` into a temporary binary path on `req.Binary`.
-2. Leaves set `req.HeaderOnly` to choose between header-only and full output.
+2. Leaves set header mode flags or explicit `req.Args`.
 
 ## Context
 
-- Tests use the real `go-best-practice` binary to exercise `handleSkill` flag parsing.
+- Tests use the real `go-best-practice` binary to exercise skill flag parsing
+  after migration to skillcmd.
 
 ```go
 import (

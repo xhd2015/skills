@@ -3,14 +3,15 @@ name: go-best-practice
 description: >-
   Index of Go best-practice recipes (project scaffolding, CLI flag
   parsing, and more). Use when the user wants to bootstrap a new
-  project or parse CLI flags in a Go program. Run the skill to reveal
-  the detailed content for a topic.
+  project or parse CLI flags in a Go program. Load a sub-topic with:
+  go-best-practice skill --show <topic-path>
 ---
 
 # Go Best Practice Skill
 
-This skill is an **index**. Run `go-best-practice <topic>` to
-print the detailed recipe for a topic. Topics are organized as a
+This skill is an **index**. Load a detailed recipe with
+`go-best-practice skill --show <topic>` (or
+`go-best-practice skill <topic> --show`). Topics are organized as a
 tree; address a sub-topic with a slash-separated path, e.g.
 `flags-parsing/types`.
 
@@ -26,19 +27,23 @@ tree; address a sub-topic with a slash-separated path, e.g.
   - `types` — supported target types (`*bool`, `*string`, `*int`,
     `*time.Duration`, `*[]string`, and `**T` variants)
   - `subcommand` — sub-command dispatcher patterns (with `StopOnFirstArg` and no-toplevel-flags variants)
-- `skill-cli` — building skill CLIs (embed, install package, topic loading)
+- `skill-cli` — skill CLI shapes: single-skill, multi-skill host, topic discovery
 
 ## Usage
 
 ```bash
-# list top-level topics
+# list top-level topics (CLI help index)
 go-best-practice
+go-best-practice topics
+
+# root skill index
+go-best-practice skill --show
 
 # reveal a top-level topic
-go-best-practice kool-create
-go-best-practice flags-parsing
+go-best-practice skill --show kool-create
+go-best-practice skill --show flags-parsing
 
-# reveal a sub-topic (slash-separated path)
-go-best-practice flags-parsing/types
-go-best-practice flags-parsing/subcommand
+# reveal a sub-topic (slash-separated path; both flag orders)
+go-best-practice skill --show flags-parsing/types
+go-best-practice skill flags-parsing/subcommand --show
 ```

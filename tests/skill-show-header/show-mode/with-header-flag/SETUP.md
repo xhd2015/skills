@@ -1,15 +1,15 @@
 # Scenario
 
-**Feature**: `skill show --header` prints YAML frontmatter only
+**Feature**: `skill --show --header` prints YAML frontmatter only
 
 ```
 # header-only invocation
-user -> go-best-practice skill show --header -> ---\nname: ...\n---
+user -> go-best-practice skill --show --header -> ---\nname: ...\n---
 ```
 
 ## Preconditions
 
-- `req.HeaderOnly` is true.
+- `req.HeaderOnly` is true; flag order is `--show` then `--header`.
 
 ## Steps
 
@@ -22,6 +22,7 @@ user -> go-best-practice skill show --header -> ---\nname: ...\n---
 ```go
 func Setup(t *testing.T, req *Request) error {
 	req.HeaderOnly = true
+	req.HeaderBeforeShow = false
 	return nil
 }
 ```

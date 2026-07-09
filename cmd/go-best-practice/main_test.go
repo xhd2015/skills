@@ -52,20 +52,36 @@ func TestReadTopicSkillCLI(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ok for skill-cli")
 	}
-	if !strings.Contains(content, "skill install") {
+	if !strings.Contains(content, "skill --install") && !strings.Contains(content, "--install") {
 		t.Errorf("unexpected content for skill-cli: %s", content)
+	}
+	if !strings.Contains(content, "go-best-practice/skill-cli") {
+		t.Errorf("skill-cli missing nested frontmatter name: %s", content)
 	}
 }
 
-func TestHandleSkillCLITopic(t *testing.T) {
+func TestHandleSkillCLITopicViaShow(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill-cli"})
+		return handle([]string{"skill", "--show", "skill-cli"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill-cli): %v", err)
+		t.Fatalf("handle(skill --show skill-cli): %v", err)
 	}
-	if !strings.Contains(output, "skill install") {
+	if !strings.Contains(output, "skill-cli") {
 		t.Errorf("skill-cli output missing expected content: %s", output)
+	}
+	if !strings.Contains(output, "go-best-practice/skill-cli") {
+		t.Errorf("missing nested name: %s", output)
+	}
+}
+
+func TestHandleBareTopicPathRejected(t *testing.T) {
+	err := handle([]string{"skill-cli"})
+	if err == nil {
+		t.Fatal("expected error for bare topic path")
+	}
+	if !strings.Contains(err.Error(), "unknown command") {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }
 
@@ -150,9 +166,6 @@ func TestPrintTopicIndex(t *testing.T) {
 	if !strings.Contains(output, "skill-cli") {
 		t.Errorf("topics output missing skill-cli: %s", output)
 	}
-	if !strings.Contains(output, "skill-cli") {
-		t.Errorf("missing skill-cli in output: %s", output)
-	}
 }
 
 func TestHelpText(t *testing.T) {
@@ -165,6 +178,9 @@ func TestHelpText(t *testing.T) {
 	if !strings.Contains(help, "topics") {
 		t.Error("help text missing topics command")
 	}
+	if !strings.Contains(help, "skill --show") {
+		t.Error("help text missing skill --show")
+	}
 }
 
 func TestCollectTopicFiles(t *testing.T) {
@@ -176,19 +192,26 @@ func TestCollectTopicFiles(t *testing.T) {
 		t.Fatal("expected at least one topic file")
 	}
 	hasCmdExec := false
+	hasSkillCLI := false
 	for _, f := range files {
 		if f.Path == "SKILL.md" {
-			t.Error("topic files should not include SKILL.md")
+			t.Error("topic files should not include root SKILL.md")
 		}
-		if f.Path == "topics/cmd-exec.md" {
+		if f.Path == "cmd-exec/SKILL.md" {
 			hasCmdExec = true
+		}
+		if f.Path == "skill-cli/SKILL.md" {
+			hasSkillCLI = true
 		}
 		if len(f.Content) == 0 {
 			t.Errorf("empty content for %s", f.Path)
 		}
 	}
 	if !hasCmdExec {
-		t.Error("missing topics/cmd-exec.md in collected files")
+		t.Error("missing cmd-exec/SKILL.md in collected files")
+	}
+	if !hasSkillCLI {
+		t.Error("missing skill-cli/SKILL.md in collected files")
 	}
 }
 
@@ -216,24 +239,12 @@ func TestHandleTopics(t *testing.T) {
 	}
 }
 
-func TestHandleKnownTopic(t *testing.T) {
-	output, err := captureStdout(t, func() error {
-		return handle([]string{"kool-create"})
-	})
-	if err != nil {
-		t.Fatalf("handle(kool-create): %v", err)
-	}
-	if !strings.Contains(output, "kool create") {
-		t.Errorf("topic output missing expected content: %s", output)
-	}
-}
-
 func TestHandleUnknownCommand(t *testing.T) {
 	err := handle([]string{"unknown-cmd"})
 	if err == nil {
 		t.Fatal("expected error for unknown command")
 	}
-	if !strings.Contains(err.Error(), "unknown command or topic") {
+	if !strings.Contains(err.Error(), "unknown command") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -270,33 +281,62 @@ func TestEmbeddedSkillMDNoInstallGuidelines(t *testing.T) {
 
 func TestHandleSkillShow(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "show"})
+		return handle([]string{"skill", "--show"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill show): %v", err)
+		t.Fatalf("handle(skill --show): %v", err)
 	}
 	if !strings.Contains(output, "go-best-practice") {
-		t.Errorf("skill show output missing skill name: %s", output)
+		t.Errorf("skill --show output missing skill name: %s", output)
 	}
 }
 
-func TestHandleSkillUnknown(t *testing.T) {
-	err := handle([]string{"skill", "unknown"})
-	if err == nil {
-		t.Fatal("expected error for unknown skill sub-command")
-	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
-		t.Errorf("unexpected error message: %v", err)
+func TestHandleSkillShowNestedBothOrders(t *testing.T) {
+	for _, args := range [][]string{
+		{"skill", "--show", "skill-cli"},
+		{"skill", "skill-cli", "--show"},
+	} {
+		output, err := captureStdout(t, func() error {
+			return handle(args)
+		})
+		if err != nil {
+			t.Fatalf("handle(%v): %v", args, err)
+		}
+		if !strings.Contains(output, "go-best-practice/skill-cli") {
+			t.Errorf("handle(%v) missing nested name: %s", args, output)
+		}
 	}
 }
 
-func TestHandleSkillNoSubcommand(t *testing.T) {
+func TestHandleSkillMissingAction(t *testing.T) {
 	err := handle([]string{"skill"})
 	if err == nil {
-		t.Fatal("expected error for skill without sub-command")
+		t.Fatal("expected error for skill without action flags")
 	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
-		t.Errorf("unexpected error message: %v", err)
+	if !strings.Contains(err.Error(), "--show") && !strings.Contains(err.Error(), "--install") {
+		t.Errorf("error should mention action flags: %v", err)
+	}
+}
+
+func TestHandleLegacySkillShow(t *testing.T) {
+	err := handle([]string{"skill", "show"})
+	if err == nil {
+		t.Fatal("expected error for legacy skill show")
+	}
+}
+
+func TestHandleTopLevelInstallAlias(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return handle([]string{"install", "--dry-run"})
+	})
+	if err != nil {
+		t.Fatalf("handle(install --dry-run): %v", err)
+	}
+	if !strings.Contains(output, "[dry-run]") {
+		t.Errorf("missing dry-run output: %s", output)
+	}
+	if !strings.Contains(output, ".agents/skills/go-best-practice") {
+		t.Errorf("missing default target: %s", output)
 	}
 }
 

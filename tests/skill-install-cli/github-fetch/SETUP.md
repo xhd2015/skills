@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: `github-fetch skill install` global dry-run and install routing rules
+**Feature**: `github-fetch skill --install` global dry-run and install routing rules
 
 ```
-# skill install resolves global targets under HOME
-user -> github-fetch skill install --global --dry-run -> HOME/.agents/skills/github-fetch
+# skill --install resolves global targets under HOME
+user -> github-fetch skill --install --global --dry-run -> HOME/.agents/skills/github-fetch
 
 # top-level install is not a valid command
 user -> github-fetch install -> unknown command error

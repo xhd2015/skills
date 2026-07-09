@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: `playwright-debug skill install` global dry-run (regression / parity)
+**Feature**: `playwright-debug skill --install` global dry-run (regression / parity)
 
 ```
-# existing skill install support must keep working
-user -> playwright-debug skill install --global --dry-run -> HOME/.agents/skills/playwright-debug
+# existing skill --install support must keep working
+user -> playwright-debug skill --install --global --dry-run -> HOME/.agents/skills/playwright-debug
 ```
 
 ## Preconditions

@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: `skill show` without flags prints full SKILL.md content
+**Feature**: `skill --show` without flags prints full SKILL.md content
 
 ```
 # default show invocation
-user -> go-best-practice skill show -> header + Markdown body
+user -> go-best-practice skill --show -> header + Markdown body
 ```
 
 ## Preconditions
@@ -22,6 +22,7 @@ user -> go-best-practice skill show -> header + Markdown body
 ```go
 func Setup(t *testing.T, req *Request) error {
 	req.HeaderOnly = false
+	req.HeaderBeforeShow = false
 	return nil
 }
 ```

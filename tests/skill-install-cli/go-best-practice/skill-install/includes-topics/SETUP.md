@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: real install copies embedded topics alongside SKILL.md
+**Feature**: real install copies nested skill-cli/SKILL.md alongside root SKILL.md
 
 ```
-# non-dry-run install writes skill tree
-user -> go-best-practice skill install -> .agents/skills/go-best-practice/SKILL.md + topics/
+# non-dry-run install writes skill tree (Shape 3 nested paths)
+user -> go-best-practice skill --install -> .agents/skills/go-best-practice/SKILL.md + skill-cli/SKILL.md
 ```
 
 ## Preconditions
@@ -14,12 +14,12 @@ user -> go-best-practice skill install -> .agents/skills/go-best-practice/SKILL.
 ## Steps
 
 1. Set `req.UseWorkDir = true`.
-2. Set `req.Args = ["skill", "install"]` (no `--dry-run`).
+2. Set `req.Args = ["skill", "--install"]` (no `--dry-run`).
 
 ```go
 func Setup(t *testing.T, req *Request) error {
 	req.UseWorkDir = true
-	req.Args = []string{"skill", "install"}
+	req.Args = []string{"skill", "--install"}
 	return nil
 }
 ```

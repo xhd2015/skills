@@ -4,7 +4,7 @@
 
 ```
 # HOME is isolated temp dir for global scope
-user -> playwright-debug skill install --global --dry-run -> HOME/.agents/skills/playwright-debug
+user -> playwright-debug skill --install --global --dry-run -> HOME/.agents/skills/playwright-debug
 ```
 
 ## Preconditions
@@ -14,12 +14,12 @@ user -> playwright-debug skill install --global --dry-run -> HOME/.agents/skills
 ## Steps
 
 1. Set `req.UseGlobalHome = true`.
-2. Set `req.Args = ["skill", "install", "--global", "--dry-run"]`.
+2. Set `req.Args = ["skill", "--install", "--global", "--dry-run"]`.
 
 ```go
 func Setup(t *testing.T, req *Request) error {
 	req.UseGlobalHome = true
-	req.Args = []string{"skill", "install", "--global", "--dry-run"}
+	req.Args = []string{"skill", "--install", "--global", "--dry-run"}
 	return nil
 }
 ```

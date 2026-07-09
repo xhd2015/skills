@@ -1,13 +1,13 @@
 # Scenario
 
-**Feature**: `go-best-practice` gains `skill install` parity with other repo CLIs
+**Feature**: `go-best-practice` skill actions use flag form via skillcmd
 
 ```
-# go-best-practice routes skill sub-commands
-user -> go-best-practice -> handleSkill -> skill install | skill show
+# go-best-practice routes skill flag actions
+user -> go-best-practice skill --show|--install|--list -> skillcmd SingleSkill
 
 # top-level install remains a backward-compatible alias
-user -> go-best-practice install -> install.HandleInstall
+user -> go-best-practice install -> skill --install equivalent
 ```
 
 ## Preconditions
@@ -22,7 +22,8 @@ user -> go-best-practice install -> install.HandleInstall
 
 ## Context
 
-- Embedded assets include SKILL.md and all `topics/**/*.md` files.
+- Embedded assets include root SKILL.md and nested `path/SKILL.md` extras
+  (migrated from `topics/*.md`).
 
 ```go
 func Setup(t *testing.T, req *Request) error {

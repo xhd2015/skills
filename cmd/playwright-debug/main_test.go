@@ -31,11 +31,11 @@ func TestHelpText(t *testing.T) {
 	if !strings.Contains(help, "run") {
 		t.Error("help text missing run command")
 	}
-	if !strings.Contains(help, "skill install") {
-		t.Error("help text missing skill install command")
+	if !strings.Contains(help, "skill --install") {
+		t.Error("help text missing skill --install command")
 	}
-	if !strings.Contains(help, "skill show") {
-		t.Error("help text missing skill show command")
+	if !strings.Contains(help, "skill --show") {
+		t.Error("help text missing skill --show command")
 	}
 }
 
@@ -110,22 +110,22 @@ func TestHandleRunHelpInArgs(t *testing.T) {
 
 func TestHandleSkillShow(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "show"})
+		return handle([]string{"skill", "--show"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill show): %v", err)
+		t.Fatalf("handle(skill --show): %v", err)
 	}
 	if !strings.Contains(output, "playwright-debug") {
-		t.Errorf("skill show output missing skill name: %s", output)
+		t.Errorf("skill --show output missing skill name: %s", output)
 	}
 }
 
 func TestHandleSkillUnknown(t *testing.T) {
 	err := handle([]string{"skill", "unknown"})
 	if err == nil {
-		t.Fatal("expected error for unknown skill sub-command")
+		t.Fatal("expected error for skill without action flags")
 	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+	if !strings.Contains(err.Error(), "--show") && !strings.Contains(err.Error(), "--install") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -133,19 +133,19 @@ func TestHandleSkillUnknown(t *testing.T) {
 func TestHandleSkillNoSubcommand(t *testing.T) {
 	err := handle([]string{"skill"})
 	if err == nil {
-		t.Fatal("expected error for skill without sub-command")
+		t.Fatal("expected error for skill without action flags")
 	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+	if !strings.Contains(err.Error(), "--show") && !strings.Contains(err.Error(), "--install") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
 
 func TestHandleSkillInstallDryRun(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "install", "--dry-run"})
+		return handle([]string{"skill", "--install", "--dry-run"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill install --dry-run): %v", err)
+		t.Fatalf("handle(skill --install --dry-run): %v", err)
 	}
 	if !strings.Contains(output, "[dry-run]") {
 		t.Errorf("expected dry-run output, got: %s", output)
@@ -154,10 +154,10 @@ func TestHandleSkillInstallDryRun(t *testing.T) {
 
 func TestHandleSkillInstallDirDryRun(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "install", "/tmp/test-playwright-debug", "--dry-run"})
+		return handle([]string{"skill", "--install", "/tmp/test-playwright-debug", "--dry-run"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill install /tmp/... --dry-run): %v", err)
+		t.Fatalf("handle(skill --install /tmp/... --dry-run): %v", err)
 	}
 	if !strings.Contains(output, "[dry-run]") {
 		t.Errorf("expected dry-run output, got: %s", output)
@@ -169,10 +169,10 @@ func TestHandleSkillInstallDirDryRun(t *testing.T) {
 
 func TestHandleSkillInstallCursorDryRun(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "install", "--cursor", "--dry-run"})
+		return handle([]string{"skill", "--install", "--cursor", "--dry-run"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill install --cursor --dry-run): %v", err)
+		t.Fatalf("handle(skill --install --cursor --dry-run): %v", err)
 	}
 	if !strings.Contains(output, "[dry-run]") {
 		t.Errorf("expected dry-run output, got: %s", output)

@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/xhd2015/skills/install"
-	"github.com/xhd2015/skills/skill_file"
+	"github.com/xhd2015/skills/skillcmd"
 )
 
 //go:embed SKILL.md
 var skillTemplate string
+
+const skillName = "github-fetch"
 
 const help = `
 Usage: github-fetch <command> [ARGS]
@@ -22,8 +23,9 @@ Commands:
   work-on <url-or-number>              Create a git worktree for the PR
   push [<url-or-number>] [-f]          Push current HEAD to the PR's source branch
   status                               Show GitHub auth status and API rate limits
-  skill show                           Show the content of SKILL.md
-  skill install [<dir>]                Install skill SKILL.md to a directory
+  skill --show [--header]              Show the content of SKILL.md
+  skill --install [<dir>]              Install skill SKILL.md to a directory
+  skill --list                         Print the skill name
 
 <url> can be a PR URL, Actions run URL, or Actions job URL.
 
@@ -39,7 +41,7 @@ Examples:
   github-fetch pr --logs https://github.com/xhd2015/xgo/actions/runs/26795086426/job/78989577716
   github-fetch work-on 379
   github-fetch push -f
-  github-fetch skill install --cursor
+  github-fetch skill --install --cursor
 
 Options:
   -h, --help    Show this help message
@@ -85,37 +87,9 @@ func handle(args []string) error {
 }
 
 func handleSkill(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
-	}
-	switch args[0] {
-	case "show":
-		rest := args[1:]
-		headerOnly := false
-		if len(rest) > 0 && rest[0] == "--header" {
-			headerOnly = true
-			rest = rest[1:]
-		}
-		if len(rest) > 0 {
-			return fmt.Errorf("unknown skill show option: %s", rest[0])
-		}
-		if headerOnly {
-			out, err := skill_file.FormatHeaderWithDelimiters(skillTemplate)
-			if err != nil {
-				return err
-			}
-			fmt.Print(out)
-			return nil
-		}
-		fmt.Print(skillTemplate)
-		return nil
-	case "install":
-		return install.HandleInstall(install.InstallOptions{
-			SkillDirName: "github-fetch",
-			SkillContent: skillTemplate,
-			Usage:        "install",
-		}, args[1:])
-	default:
-		return fmt.Errorf("unknown skill sub-command: %s (expected `skill show` or `skill install`)", args[0])
-	}
+	return (&skillcmd.SingleSkill{
+		Name:        skillName,
+		RootContent: skillTemplate,
+		Usage:       "skill --install",
+	}).Handle(args)
 }

@@ -1,8 +1,8 @@
 ## Expected
 
 - Non-zero exit code.
-- stderr contains `unknown skill sub-command`.
-- stderr mentions `skill show` or `skill install`.
+- stderr (or stdout) mentions expected action flags such as `--show` and/or `--install`.
+- Must not imply legacy word subcommands `skill show` / `skill install` as the only form.
 
 ## Side Effects
 
@@ -30,11 +30,8 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("expected non-zero exit, got 0\nstdout:\n%s\nstderr:\n%s", resp.Stdout, resp.Stderr)
 	}
 	combined := resp.Stdout + resp.Stderr
-	if !strings.Contains(combined, "unknown skill sub-command") {
-		t.Fatalf("error missing unknown skill sub-command:\n%s", combined)
-	}
-	if !strings.Contains(combined, "skill show") && !strings.Contains(combined, "skill install") {
-		t.Fatalf("error must mention skill show or skill install:\n%s", combined)
+	if !strings.Contains(combined, "--show") && !strings.Contains(combined, "--install") {
+		t.Fatalf("error must mention --show or --install:\n%s", combined)
 	}
 }
 ```

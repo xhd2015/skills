@@ -445,11 +445,11 @@ func TestHelpText(t *testing.T) {
 	if !strings.Contains(help, "push") {
 		t.Error("help text missing push command")
 	}
-	if !strings.Contains(help, "skill install") {
-		t.Error("help text missing skill install command")
+	if !strings.Contains(help, "skill --install") {
+		t.Error("help text missing skill --install command")
 	}
-	if !strings.Contains(help, "skill show") {
-		t.Error("help text missing skill show command")
+	if !strings.Contains(help, "skill --show") {
+		t.Error("help text missing skill --show command")
 	}
 	if !strings.Contains(help, "pr --logs") {
 		t.Error("help text missing pr --logs option")
@@ -494,22 +494,22 @@ func TestHandleHelpLong(t *testing.T) {
 
 func TestHandleSkillShow(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "show"})
+		return handle([]string{"skill", "--show"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill show): %v", err)
+		t.Fatalf("handle(skill --show): %v", err)
 	}
 	if !strings.Contains(output, "github-fetch") {
-		t.Errorf("skill show output missing skill name: %s", output)
+		t.Errorf("skill --show output missing skill name: %s", output)
 	}
 }
 
 func TestHandleSkillUnknown(t *testing.T) {
 	err := handle([]string{"skill", "unknown"})
 	if err == nil {
-		t.Fatal("expected error for unknown skill sub-command")
+		t.Fatal("expected error for skill without action flags")
 	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+	if !strings.Contains(err.Error(), "--show") && !strings.Contains(err.Error(), "--install") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -517,19 +517,20 @@ func TestHandleSkillUnknown(t *testing.T) {
 func TestHandleSkillNoSubcommand(t *testing.T) {
 	err := handle([]string{"skill"})
 	if err == nil {
-		t.Fatal("expected error for skill without sub-command")
+		t.Fatal("expected error for skill without action flags")
 	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+	if !strings.Contains(err.Error(), "--show") && !strings.Contains(err.Error(), "--install") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
 
 func TestHandleSkillInstallUnknown(t *testing.T) {
+	// bare token without action flag is a missing-action error
 	err := handle([]string{"skill", "unknown-install"})
 	if err == nil {
-		t.Fatal("expected error for unknown skill sub-command")
+		t.Fatal("expected error for skill without action flags")
 	}
-	if !strings.Contains(err.Error(), "unknown skill sub-command") {
+	if !strings.Contains(err.Error(), "--show") && !strings.Contains(err.Error(), "--install") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -537,7 +538,7 @@ func TestHandleSkillInstallUnknown(t *testing.T) {
 func TestHandleInstallStandaloneIsUnknown(t *testing.T) {
 	err := handle([]string{"install"})
 	if err == nil {
-		t.Fatal("expected error for standalone install (should be skill install)")
+		t.Fatal("expected error for standalone install (should be skill --install)")
 	}
 	if !strings.Contains(err.Error(), "unknown command") {
 		t.Errorf("unexpected error message: %v", err)

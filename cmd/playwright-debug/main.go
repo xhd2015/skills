@@ -8,20 +8,22 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/xhd2015/skills/install"
 	"github.com/xhd2015/skills/playwrightdebug"
-	"github.com/xhd2015/skills/skill_file"
+	"github.com/xhd2015/skills/skillcmd"
 )
 
 //go:embed SKILL.md
 var skillTemplate string
 
+const skillName = "playwright-debug"
+
 const help = `Usage: playwright-debug <command> [ARGS]
 
 Commands:
   run <file.js> [args...]  Run an existing Playwright .js script file
-  skill show               Show the content of SKILL.md
-  skill install [<dir>]    Install skill SKILL.md to a directory
+  skill --show [--header]  Show the content of SKILL.md
+  skill --install [<dir>]  Install skill SKILL.md to a directory
+  skill --list             Print the skill name
 
 Invocation modes:
   playwright-debug <file.js> [args...]         Run script file (file alias)
@@ -79,12 +81,20 @@ func handle(args []string) error {
 		}
 		return handleRunFile(args[1], args[2:]...)
 	case "skill":
-		return handleSkill(args[1:])
+		return singleSkill().Handle(args[1:])
 	default:
 		if isScriptFile(args[0]) {
 			return handleRunFile(args[0], args[1:]...)
 		}
 		return handleRunEval(strings.Join(args, " "), nil)
+	}
+}
+
+func singleSkill() *skillcmd.SingleSkill {
+	return &skillcmd.SingleSkill{
+		Name:        skillName,
+		RootContent: skillTemplate,
+		Usage:       "skill --install",
 	}
 }
 
@@ -113,42 +123,6 @@ func isScriptFile(path string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-func handleSkill(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("unknown skill sub-command: expected `skill show` or `skill install`")
-	}
-	switch args[0] {
-	case "show":
-		rest := args[1:]
-		headerOnly := false
-		if len(rest) > 0 && rest[0] == "--header" {
-			headerOnly = true
-			rest = rest[1:]
-		}
-		if len(rest) > 0 {
-			return fmt.Errorf("unknown skill show option: %s", rest[0])
-		}
-		if headerOnly {
-			out, err := skill_file.FormatHeaderWithDelimiters(skillTemplate)
-			if err != nil {
-				return err
-			}
-			fmt.Print(out)
-			return nil
-		}
-		fmt.Print(skillTemplate)
-		return nil
-	case "install":
-		return install.HandleInstall(install.InstallOptions{
-			SkillDirName: "playwright-debug",
-			SkillContent: skillTemplate,
-			Usage:        "skill install",
-		}, args[1:])
-	default:
-		return fmt.Errorf("unknown skill sub-command: %s (expected `skill show` or `skill install`)", args[0])
-	}
 }
 
 func handleRunFile(scriptPath string, scriptArgs ...string) error {

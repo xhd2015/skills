@@ -1,22 +1,25 @@
 # Skill Install CLI Tests
 
-Doc-style tests for `skill install` on the three repo skill CLIs (`go-best-practice`,
+Doc-style tests for `skill --install` on the three repo skill CLIs (`go-best-practice`,
 `playwright-debug`, `github-fetch`). Covers dry-run output, global target resolution,
-real install side effects, backward-compatible top-level `install`, regression for
-`skill show`, and error paths for unknown sub-commands.
+real install side effects (nested `path/SKILL.md` extras), backward-compatible
+top-level `install`, regression for `skill --show`, nested topic show orders, and
+error paths for missing/legacy action forms.
 
 # DSN (Domain Specific Notion)
 
 Participants:
 
-- User invokes a skill CLI binary with `skill install`, top-level `install`, or
-  `skill show`.
-- CLI router (`handle`) dispatches `skill` to `handleSkill`, which wires `install`
-  for `skill install` or prints embedded SKILL.md for `skill show`.
-- `install.HandleInstall` resolves target directories (local `.agents/skills/<name>`,
-  global `~/.agents/skills/<name>`, or explicit `<dir>`) and copies SKILL.md plus
-  any embedded extra files (topics for `go-best-practice`).
+- User invokes a skill CLI binary with `skill --install`, top-level `install`, or
+  `skill --show` (actions are **flags**, not word subcommands `show`/`install`).
+- CLI router (`handle`) dispatches `skill` into skillcmd (or equivalent) which
+  classifies `--show` / `--install` / `--list` and remaining path/name/install flags.
+- Install resolves target directories (local `.agents/skills/<name>`, global
+  `~/.agents/skills/<name>`, or explicit `<dir>`) and copies SKILL.md plus any
+  nested extra files (e.g. `skill-cli/SKILL.md` for go-best-practice Shape 3).
 - Dry-run mode prints `[dry-run]` lines to stdout without writing files.
+- Legacy word forms (`skill show`, `skill install`) and bare paths under `skill`
+  without an action flag are rejected.
 
 ## Decision Tree
 
@@ -26,10 +29,15 @@ skill-install-cli/
 │   ├── skill-install/
 │   │   ├── dry-run-default/
 │   │   ├── global-dry-run/
-│   │   └── includes-topics/
+│   │   └── includes-topics/          # nested skill-cli/SKILL.md (not topics/*.md)
 │   ├── skill-show-still-works/
+│   ├── skill-show-nested/
+│   │   ├── flag-before-path/
+│   │   └── path-before-flag/
+│   ├── bare-path-no-action/
+│   ├── legacy-skill-show/
 │   ├── top-level-install-alias/
-│   └── unknown-subcommand/
+│   └── unknown-subcommand/           # skill with no action flags
 ├── playwright-debug/
 │   └── global-dry-run/
 └── github-fetch/
@@ -41,15 +49,19 @@ skill-install-cli/
 
 | Leaf | Description |
 |------|-------------|
-| `go-best-practice/skill-install/dry-run-default` | `skill install --dry-run` mentions `.agents/skills/go-best-practice` |
-| `go-best-practice/skill-install/global-dry-run` | `skill install --global --dry-run` resolves under `HOME` |
-| `go-best-practice/skill-install/includes-topics` | Real install copies `topics/skill-cli.md` with SKILL.md |
-| `go-best-practice/skill-show-still-works` | `skill show` still prints skill name (regression) |
-| `go-best-practice/top-level-install-alias` | Top-level `install --dry-run` matches `skill install --dry-run` |
-| `go-best-practice/unknown-subcommand` | `skill bogus` errors with known sub-command hints |
+| `go-best-practice/skill-install/dry-run-default` | `skill --install --dry-run` mentions `.agents/skills/go-best-practice` |
+| `go-best-practice/skill-install/global-dry-run` | `skill --install --global --dry-run` resolves under `HOME` |
+| `go-best-practice/skill-install/includes-topics` | Real install copies `skill-cli/SKILL.md` with SKILL.md |
+| `go-best-practice/skill-show-still-works` | `skill --show` still prints skill name (regression) |
+| `go-best-practice/skill-show-nested/flag-before-path` | `skill --show skill-cli` prints nested topic; name has `go-best-practice/skill-cli` |
+| `go-best-practice/skill-show-nested/path-before-flag` | `skill skill-cli --show` same nested content |
+| `go-best-practice/bare-path-no-action` | `skill skill-cli` without action → error |
+| `go-best-practice/legacy-skill-show` | legacy `skill show` → error |
+| `go-best-practice/top-level-install-alias` | Top-level `install --dry-run` matches `skill --install --dry-run` |
+| `go-best-practice/unknown-subcommand` | `skill` alone (no action flags) errors with expected action hints |
 | `playwright-debug/global-dry-run` | Global dry-run mentions `playwright-debug` under `HOME` |
 | `github-fetch/global-dry-run` | Global dry-run mentions `github-fetch` under `HOME` |
-| `github-fetch/standalone-install-rejected` | Top-level `install` is unknown (must use `skill install`) |
+| `github-fetch/standalone-install-rejected` | Top-level `install` is unknown (must use `skill --install`) |
 
 ## How to Run
 

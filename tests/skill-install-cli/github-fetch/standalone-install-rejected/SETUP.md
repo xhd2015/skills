@@ -1,6 +1,6 @@
 # Scenario
 
-**Feature**: github-fetch rejects top-level `install` (must use `skill install`)
+**Feature**: github-fetch rejects top-level `install` (must use `skill --install`)
 
 ```
 # standalone install is not a registered command

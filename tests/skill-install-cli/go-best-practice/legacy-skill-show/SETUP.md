@@ -1,0 +1,19 @@
+# Scenario
+
+**Feature**: legacy word form `skill show` is rejected after flag migration
+
+```
+# word subcommand no longer valid
+user -> go-best-practice skill show -> error
+```
+
+## Steps
+
+1. Set Args `skill show` (legacy).
+
+```go
+func Setup(t *testing.T, req *Request) error {
+	req.Args = []string{"skill", "show"}
+	return nil
+}
+```

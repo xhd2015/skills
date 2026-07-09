@@ -1,13 +1,13 @@
 # Scenario
 
-**Feature**: `go-best-practice skill install` resolves targets and copies topics
+**Feature**: `go-best-practice skill --install` resolves targets and nested extras
 
 ```
 # dry-run previews install without writing files
-user -> go-best-practice skill install --dry-run -> [dry-run] stdout
+user -> go-best-practice skill --install --dry-run -> [dry-run] stdout
 
-# real install writes SKILL.md and topics under target dir
-user -> go-best-practice skill install -> .agents/skills/go-best-practice/
+# real install writes SKILL.md and nested skill-cli/SKILL.md
+user -> go-best-practice skill --install -> .agents/skills/go-best-practice/
 ```
 
 ## Preconditions

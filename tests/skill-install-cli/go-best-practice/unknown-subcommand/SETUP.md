@@ -1,10 +1,10 @@
 # Scenario
 
-**Bug**: unknown `skill` sub-commands should list valid choices including `skill install`
+**Bug**: `skill` without an action flag must explain expected flags
 
 ```
-# bogus skill sub-command rejected with helpful message
-user -> go-best-practice skill bogus -> unknown skill sub-command error
+# missing action under skill
+user -> go-best-practice skill -> error mentioning --show / --install / --list
 ```
 
 ## Preconditions
@@ -13,11 +13,11 @@ user -> go-best-practice skill bogus -> unknown skill sub-command error
 
 ## Steps
 
-1. Set `req.Args = ["skill", "bogus"]`.
+1. Set `req.Args = ["skill"]` (no --show/--install/--list).
 
 ```go
 func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"skill", "bogus"}
+	req.Args = []string{"skill"}
 	return nil
 }
 ```

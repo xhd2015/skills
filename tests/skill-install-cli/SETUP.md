@@ -1,16 +1,16 @@
 # Scenario
 
-**Feature**: repo skill CLIs support `skill install` with dry-run and global targets
+**Feature**: repo skill CLIs support `skill --install` with dry-run and global targets
 
 ```
-# user invokes skill install on a CLI binary
-user -> skill CLI (skill install) -> install.HandleInstall -> stdout / filesystem
+# user invokes skill --install on a CLI binary
+user -> skill CLI (skill --install) -> install/skillcmd HandleInstall -> stdout / filesystem
 
 # global scope resolves under HOME
-user -> skill CLI (skill install --global) -> ~/.agents/skills/<name>
+user -> skill CLI (skill --install --global) -> ~/.agents/skills/<name>
 
-# go-best-practice also ships embedded topics
-install.HandleInstall -> SKILL.md + topics/*.md
+# go-best-practice ships nested skill-cli/SKILL.md extras (Shape 3)
+HandleInstall -> SKILL.md + skill-cli/SKILL.md (+ other nested paths)
 ```
 
 ## Preconditions
@@ -31,6 +31,7 @@ install.HandleInstall -> SKILL.md + topics/*.md
 - Tests shell out to real CLI binaries (not the `install` package directly).
 - Local install tests chdir into an isolated temp work directory.
 - Global install tests set `HOME` to a separate temp directory.
+- After skillcmd migration, action flags replace word subcommands under `skill`.
 
 ```go
 import (
