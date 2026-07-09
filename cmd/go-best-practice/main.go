@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"sort"
 	"strings"
 
 	"github.com/xhd2015/skills/cmd/go-best-practice/vet"
@@ -36,8 +35,8 @@ Commands:
   skill --show [--header] [path]
                            Show root SKILL.md or nested path/SKILL.md
   skill --install [<dir>]  Install SKILL.md + nested topics to a directory
-  skill --list             Print the skill name
-  topics                   List all available top-level topics
+  skill --list             Print skill name and all nested topic paths
+  topics                   List all available topics (same tree as skill --list)
   vet [flags] [dirs]       Check codebase for best-practice violations
 
 Topics are nested directories with SKILL.md. Address a nested topic with a
@@ -57,20 +56,22 @@ const skillHelp = `Usage: go-best-practice skill --show [--header] [<topic-path>
 
 Show the root SKILL.md index or a nested topic (path/SKILL.md).
 Install copies SKILL.md and nested topics into agent skill directories.
-List prints the skill name (go-best-practice).
+List prints the skill name and every available topic path.
+--help also lists available topics (see below).
 
 Examples:
   go-best-practice skill --show
   go-best-practice skill --show flags-parsing/types
   go-best-practice skill flags-parsing/types --show
+  go-best-practice skill --list
   go-best-practice skill --install --dry-run
   go-best-practice skill --install --help
 
 Options:
   --show [--header] [path]   Print skill or topic content (header-only with --header)
   --install [OPTIONS] [dir]  Install skill files (see --install --help)
-  --list                     Print skill directory name
-  -h, --help                 Show this help message
+  --list                     Print skill name and all topic paths
+  -h, --help                 Show this help and available topics
 `
 
 func main() {
@@ -120,35 +121,7 @@ func singleSkill() *skillcmd.SingleSkill {
 // that contain SKILL.md), slash-separated, e.g. "flags-parsing",
 // "flags-parsing/types".
 func listTopics() ([]string, error) {
-	var topics []string
-	err := fs.WalkDir(skillTreeFS, ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if path.Base(p) != "SKILL.md" {
-			return nil
-		}
-		p = path.Clean(p)
-		if p == "SKILL.md" || p == "./SKILL.md" {
-			return nil
-		}
-		rel := strings.TrimSuffix(p, "/SKILL.md")
-		rel = strings.TrimSuffix(rel, "SKILL.md")
-		rel = strings.Trim(rel, "/")
-		if rel == "" {
-			return nil
-		}
-		topics = append(topics, rel)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("walk embedded skill tree: %w", err)
-	}
-	sort.Strings(topics)
-	return topics, nil
+	return skillcmd.ListTreeTopics(skillTreeFS)
 }
 
 func printTopicIndex() error {
@@ -156,16 +129,7 @@ func printTopicIndex() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Available topics:")
-	for _, t := range topics {
-		depth := strings.Count(t, "/")
-		indent := strings.Repeat("  ", depth)
-		label := t
-		if idx := strings.LastIndex(t, "/"); idx >= 0 {
-			label = t[idx+1:]
-		}
-		fmt.Printf("  %s- %s\n", indent, label)
-	}
+	fmt.Print(skillcmd.FormatTopicIndex(topics))
 	return nil
 }
 

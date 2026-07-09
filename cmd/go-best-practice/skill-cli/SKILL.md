@@ -33,7 +33,7 @@ There are **no** `show` / `install` subcommands. Actions are flags only:
 |--------|------|
 | Print skill content | `--show` |
 | Install skill files | `--install` |
-| List skill name(s) | `--list` / `-l` (Shape 1/2; also `skills` on Shape 2) |
+| List skill name(s) and, for multi-topic trees, all topic paths | `--list` / `-l` (Shape 1/2/3; also `skills` on Shape 2) |
 
 **Both argument orders are valid** (flag before or after positionals):
 
@@ -92,6 +92,13 @@ Users discover nested CLIs with help. **Do not** only implement root
 5. Root help text should mention:  
    `Run <cli> skill --help` and `Run <cli> skill --install --help`.
 6. Errors that require an action should hint `(try --help)`.
+7. **Multi-topic / Shape 3:** `skill --list` and `skill --help` must surface
+   **all available topic paths** (not only the root skill name).  
+   - `--list`: print skill name, then each nested path (`flags-parsing`,  
+     `flags-parsing/types`, …), one per line.  
+   - `--help`: after usage text, append an `Available topics:` index  
+     (via `ListTreeTopics` / `FormatTopicIndex` on `TreeFS`).  
+   Flat single-skill CLIs (no tree) still list only the skill name.
 
 Same principle applies to **any** word sub-command outside skillcmd (see
 `flags-parsing/subcommand`): each `case "cmd":` handler wires its own
@@ -553,15 +560,20 @@ Each node is a directory containing `SKILL.md` (not `topics/<name>.md`).
 ### Commands
 
 ```text
-<cli> skill --help
+<cli> skill --help                            # usage + Available topics: index
 <cli> skill --show [--header]                 # root index
 <cli> skill --show <topic>[/<sub>…]           # nested SKILL.md
 <cli> skill <topic>[/<sub>…] --show           # same (both orders)
 <cli> skill --install [OPTIONS] [<dir>]       # root SKILL.md + all nested SKILL.md
 <cli> skill --install --help
 
-# recommended strongly
+# required for multi-topic: skill name + every nested path
 <cli> skill --list
+# e.g.
+#   my-skill
+#   flags-parsing
+#   flags-parsing/types
+#   skill-cli
 ```
 
 ### Layout
@@ -834,24 +846,26 @@ Intermediate directories that have children still ship their own `SKILL.md` so
 5. Default install dir is `.agents/skills/<name>/`
 6. **`--help` at every level:** root, `skill`, `skill --install`, and (Shape 2) `skills` / `skills update`
 7. Set `SingleSkill.Help` / `Registry.Help` (or accept defaults); install help via `HandleInstall`
-8. **Recommended strongly:** `--header` with `--show`, `--list`
+8. **Multi-topic:** `--list` and `--help` include full topic path inventory from `TreeFS`
+9. **Recommended strongly:** `--header` with `--show`, `--list`
 
 **Shape 2**
 
-9. Stable `knownSkillNames()` for list/update order  
-10. `skills` ≡ `skill --list` / `-l`  
-11. `skills update` via `HandleUpdateMany`  
-12. Register every skill’s embed + help text lists  
-13. `skills --help` and `skills update --help` work  
+10. Stable `knownSkillNames()` for list/update order  
+11. `skills` ≡ `skill --list` / `-l`  
+12. `skills update` via `HandleUpdateMany`  
+13. Register every skill’s embed + help text lists  
+14. `skills --help` and `skills update --help` work  
 
 **Shape 3**
 
-14. Every node is `<path>/SKILL.md` (not `topics/<path>.md`)  
-15. Frontmatter `name` is `root/sub/…` matching the directory path  
-16. `skill --show a/b` reads `a/b/SKILL.md`  
-17. Install passes nested `SKILL.md` files as `ExtraFiles`  
-18. Reject empty / `.` / `..` path segments  
-19. Index root lists topics and `--show` examples  
+15. Every node is `<path>/SKILL.md` (not `topics/<path>.md`)  
+16. Frontmatter `name` is `root/sub/…` matching the directory path  
+17. `skill --show a/b` reads `a/b/SKILL.md`  
+18. Install passes nested `SKILL.md` files as `ExtraFiles`  
+19. Reject empty / `.` / `..` path segments  
+20. Index root lists topics and `--show` examples  
+21. `skill --list` / `skill --help` enumerate full topic inventory (`ListTreeTopics`)  
 
 ---
 

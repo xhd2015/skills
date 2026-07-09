@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"sort"
 	"strings"
 )
 
@@ -34,6 +35,67 @@ func loadTreeSkill(treeFS fs.FS, topicPath string) (string, error) {
 		return "", fmt.Errorf("read skill %s: %w", topicPath, err)
 	}
 	return string(data), nil
+}
+
+// ListTreeTopics returns sorted slash-separated topic paths for every nested
+// path/SKILL.md under treeFS (e.g. "flags-parsing", "flags-parsing/types").
+// Root-level SKILL.md is not a topic path.
+func ListTreeTopics(treeFS fs.FS) ([]string, error) {
+	if treeFS == nil {
+		return nil, nil
+	}
+	var topics []string
+	err := fs.WalkDir(treeFS, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		p = path.Clean(p)
+		if path.Base(p) != "SKILL.md" {
+			return nil
+		}
+		if p == "SKILL.md" || p == "./SKILL.md" {
+			return nil
+		}
+		rel := strings.TrimSuffix(p, "/SKILL.md")
+		rel = strings.TrimSuffix(rel, "SKILL.md")
+		rel = strings.Trim(rel, "/")
+		if rel == "" {
+			return nil
+		}
+		topics = append(topics, rel)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(topics)
+	return topics, nil
+}
+
+// FormatTopicIndex prints a hierarchical topic list (indented by path depth).
+func FormatTopicIndex(topics []string) string {
+	if len(topics) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("Available topics:\n")
+	for _, t := range topics {
+		depth := strings.Count(t, "/")
+		indent := strings.Repeat("  ", depth)
+		label := t
+		if idx := strings.LastIndex(t, "/"); idx >= 0 {
+			label = t[idx+1:]
+		}
+		b.WriteString("  ")
+		b.WriteString(indent)
+		b.WriteString("- ")
+		b.WriteString(label)
+		b.WriteByte('\n')
+	}
+	return b.String()
 }
 
 // collectTreeSkillFiles walks treeFS and returns every nested path/SKILL.md

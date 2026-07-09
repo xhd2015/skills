@@ -20,6 +20,7 @@ type SingleSkill struct {
 }
 
 // DefaultSingleSkillHelp returns a generic skill subcommand help block.
+// For multi-topic skills (TreeFS set), --list and --help also list topic paths.
 func DefaultSingleSkillHelp(usage, skillName string) string {
 	usage = strings.TrimSpace(usage)
 	if usage == "" {
@@ -36,13 +37,16 @@ func DefaultSingleSkillHelp(usage, skillName string) string {
 
 Show the embedded SKILL.md (root) or a nested topic path (path/SKILL.md).
 Install copies SKILL.md (and nested topics) to agent skill directories.
-List prints the skill directory name (%s).
+List prints the skill name (%s); when nested topics exist, also lists all topic paths.
 
 Install usage: %s [OPTIONS] [<dir>]
   Run skill --install --help for install flags (--global, --cursor, …).
 
 Options:
-  -h, --help    Show this help message
+  --show [--header] [path]   Print skill or topic content
+  --install [OPTIONS] [dir]  Install skill files (see --install --help)
+  --list                     Print skill name and available topics (if any)
+  -h, --help                 Show this help message
 `, name, usage)
 }
 
@@ -57,8 +61,7 @@ func (s *SingleSkill) Handle(args []string) error {
 		fmt.Print(s.helpText())
 		return nil
 	case ActionList:
-		fmt.Println(s.Name)
-		return nil
+		return s.handleList()
 	case ActionShow:
 		return s.handleShow(parsed.Header, parsed.Rest)
 	case ActionInstall:
@@ -69,10 +72,39 @@ func (s *SingleSkill) Handle(args []string) error {
 }
 
 func (s *SingleSkill) helpText() string {
-	if strings.TrimSpace(s.Help) != "" {
-		return s.Help
+	base := strings.TrimSpace(s.Help)
+	if base == "" {
+		base = DefaultSingleSkillHelp(s.Usage, s.Name)
 	}
-	return DefaultSingleSkillHelp(s.Usage, s.Name)
+	if !strings.HasSuffix(base, "\n") {
+		base += "\n"
+	}
+	topics, err := s.topicPaths()
+	if err != nil || len(topics) == 0 {
+		return base
+	}
+	return base + "\n" + FormatTopicIndex(topics)
+}
+
+// handleList prints the skill name; for multi-topic (TreeFS) skills also lists
+// every nested topic path (full slash paths, one per line after the name).
+func (s *SingleSkill) handleList() error {
+	fmt.Println(s.Name)
+	topics, err := s.topicPaths()
+	if err != nil {
+		return err
+	}
+	for _, t := range topics {
+		fmt.Println(t)
+	}
+	return nil
+}
+
+func (s *SingleSkill) topicPaths() ([]string, error) {
+	if s.TreeFS == nil {
+		return nil, nil
+	}
+	return ListTreeTopics(s.TreeFS)
 }
 
 func (s *SingleSkill) handleShow(header bool, rest []string) error {
