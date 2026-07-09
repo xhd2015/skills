@@ -1,7 +1,7 @@
 ---
 name: go-best-practice/flags-parsing/subcommand
 description: >-
-  Sub-command dispatcher patterns with StopOnFirstArg.
+  Sub-command dispatcher patterns with StopOnFirstArg; every level needs --help.
 ---
 
 # flags — sub-command dispatcher pattern
@@ -10,6 +10,35 @@ Use `StopOnFirstArg()` so top-level flags stop parsing at the first
 positional argument. The remainder can then be dispatched to a
 sub-command handler, which runs its own `lessflags.Parse` over its own
 option set.
+
+## Rule: every command level supports `-h` / `--help`
+
+Users explore CLIs by walking the tree with help. **Each level** of the
+command hierarchy must answer `-h` / `--help` with **that level's** usage
+(not only the root binary).
+
+| Level | Example | What `--help` shows |
+|-------|---------|---------------------|
+| Root / binary | `mytool --help` | global commands + global flags |
+| Sub-command | `mytool install --help` | install usage + install flags |
+| Nested sub-command | `mytool skill --help` | skill actions (`--show`, `--install`, …) |
+| Nested action that has its own flags | `mytool skill --install --help` | install-target flags only |
+
+**Do not** leave a dispatch node without help. If the user runs
+`mytool skill --help` and the parser requires an action flag first, they
+get a dead end. Handle `-h`/`--help` **before** (or as an alternative to)
+requiring sub-actions.
+
+Checklist when adding a command:
+
+1. Top-level: `Help("-h,--help", topHelp)` or manual `-h`/`--help` when no
+   top-level flags.
+2. Every `case "cmd":` handler: its own `Help("-h,--help", cmdHelp)` (or
+   equivalent for flag-style actions via `skillcmd`).
+3. Top-level help text should say: `Run mytool <command> --help for
+   command-specific options.`
+4. Empty args at a level that only dispatches → print that level's help
+   (friendly default).
 
 ```go
 package main
@@ -31,6 +60,8 @@ Commands:
 Global options:
   --debug        enable debug output
   -h, --help     show this help
+
+Run mytool <command> --help for command-specific options.
 `
 
 func main() {
@@ -80,11 +111,26 @@ Usage: install [--force] <dir>
     return nil
 }
 
+const runHelp = `
+Usage: mytool run [--verbose] <script>
+
+Options:
+  --verbose     verbose run output
+  -h, --help    show this help
+`
+
 func handleRun(args []string) error {
-    if len(args) == 0 {
-        return fmt.Errorf("run requires a script")
+    var verbose bool
+    args, err := lessflags.Bool("--verbose", &verbose).
+        Help("-h,--help", runHelp).
+        Parse(args)
+    if err != nil {
+        return err
     }
-    fmt.Printf("running %s\n", args[0])
+    if len(args) == 0 {
+        return fmt.Errorf("run requires a script (try --help)")
+    }
+    fmt.Printf("running %s (verbose=%v)\n", args[0], verbose)
     return nil
 }
 ```
@@ -180,6 +226,10 @@ func handleClean(args []string) error {
     _, err := lessflags.String("--dir", &dirFlag).
         Help("-h,--help", `
 Usage: mytool clean [--dir DIR]
+
+Options:
+  --dir <dir>   project directory (default: current directory)
+  -h,--help     show help
 `).Parse(args)
     if err != nil {
         return err
@@ -197,12 +247,20 @@ Usage: mytool clean [--dir DIR]
 
 ## Notes
 
+- **Every level needs `--help`** — root, each word sub-command, and any
+  nested flag surface (e.g. `skill --help` and `skill --install --help`).
+  Prefer `lessflags.Help("-h,--help", helpText)` inside each handler; for
+  skill flag CLIs use `skillcmd` (`SingleSkill.Help` / `Registry.Help`).
 - Without `StopOnFirstArg()`, `flags` would try to interpret
   sub-command flags (e.g. `--force` after `install`) against the
   top-level spec and fail with `unrecognized flag`.
 - When the toplevel has **no** flags, skip `lessflags.Parse` entirely
   at the toplevel. Just check `args[0]` for `-h`/`--help` and
   dispatch raw args to sub-commands.
-- Each handler can reuse `lessflags.Help(...)` for its own `--help`.
+- Each handler reuses `lessflags.Help(...)` for its own `--help` so
+  help text stays next to that command's flags.
+- Point users deeper: top help mentions `mytool <command> --help`.
 - See the `flags-parsing/types` sub-topic for the full list of
   supported target types.
+- Skill CLIs: see `skill-cli` for per-level help on `skill` /
+  `skills` / `--install`.

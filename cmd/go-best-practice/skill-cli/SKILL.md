@@ -9,8 +9,9 @@ description: >-
 How to ship a CLI that embeds one or more `SKILL.md` definitions and supports
 skill **actions as flags** (`--show`, `--install`), plus list/update for multi-skill hosts.
 
-Use `github.com/xhd2015/skills/install` for install/update and
-`github.com/xhd2015/skills/skill_file` for header-only show.
+Prefer `github.com/xhd2015/skills/skillcmd` (install/update, header helpers,
+`SingleSkill` / `Registry`, and parse). Deprecated shims still exist at
+`skills/install` and `skills/skill_file`.
 
 ## Choose a shape
 
@@ -53,14 +54,60 @@ There are **no** `show` / `install` subcommands. Actions are flags only:
 1. After `skill`, scan args for action/mode flags; remaining non-flag args are name, topic path, and/or install dir.
 2. Exactly one of `--show` | `--install` | `--list` (unless using Shape 2 `skills` / `skills update`).
 3. Reject combining `--show` and `--install`.
-4. `--header` only with `--show` (YAML frontmatter only via `skill_file.FormatHeaderWithDelimiters`).
-5. Install package flags (`--global`, `--cursor`, `--codex`, `--opencode`, `--general-agents`, `--dry-run`, `--no-override`, `--force`) are passed through to `install.HandleInstall` / update handlers.
+4. `--header` only with `--show` (YAML frontmatter only via `skillcmd.FormatHeaderWithDelimiters`).
+5. Install package flags (`--global`, `--cursor`, `--codex`, `--opencode`, `--general-agents`, `--dry-run`, `--no-override`, `--force`) are passed through to `skillcmd.HandleInstall` / update handlers.
+6. **`-h` / `--help` at every level** (required) — see below.
 
 **Recommended strongly**
 
 - `skill --show --header` (and `<path> --show --header` / `--show <path> --header`)
 - `skill --list` / `-l`
 - On Shape 1/3, top-level `install …` as alias of `skill --install …` is fine if you want a short path; document it in `--help` only, not in `SKILL.md`
+
+---
+
+## Shared: every command level needs `--help`
+
+Users discover nested CLIs with help. **Do not** only implement root
+`<cli> --help`. Every dispatch level must respond to `-h` / `--help` with
+**that level's** usage.
+
+| Level | Example | Shows |
+|-------|---------|--------|
+| Binary root | `<cli> --help` | top commands (`skill`, domain cmds, …) |
+| `skill` entry | `<cli> skill --help` | `--show` / `--install` / `--list` (skill surface) |
+| Install action | `<cli> skill --install --help` | install targets (`--global`, `--cursor`, …) |
+| Shape 2 `skills` | `<cli> skills --help` | list vs `skills update` |
+| Shape 2 update | `<cli> skills update --help` | update flags |
+
+### Rules (skillcmd)
+
+1. `skill -h` / `skill --help` (no action) → **skill-level** help  
+   (`SingleSkill.Help` or `DefaultSingleSkillHelp`; multi-skill: `Registry.Help`).
+2. `skill --show --help` / `skill --list --help` → same **skill-level** help  
+   (explore without requiring a path/name).
+3. `skill --install --help` → **install-level** help (pass `--help` through to
+   `HandleInstall`; do not swallow it as skill-level only).
+4. `skills -h` / `skills --help` → **skills-level** help (`Registry.SkillsHelp`).
+5. Root help text should mention:  
+   `Run <cli> skill --help` and `Run <cli> skill --install --help`.
+6. Errors that require an action should hint `(try --help)`.
+
+Same principle applies to **any** word sub-command outside skillcmd (see
+`flags-parsing/subcommand`): each `case "cmd":` handler wires its own
+`lessflags.Help("-h,--help", …)`.
+
+### Commands (help exploration)
+
+```text
+<cli> --help
+<cli> skill --help
+<cli> skill -h
+<cli> skill --install --help
+# Shape 2
+<cli> skills --help
+<cli> skills update --help
+```
 
 ---
 
@@ -95,7 +142,7 @@ Imperative workflow for the agent…
 
 ## Shared: install targets and flags
 
-`install.HandleInstall` writes:
+`skillcmd.HandleInstall` writes:
 
 ```text
 .<tool>/skills/<SkillDirName>/
@@ -123,8 +170,10 @@ The binary owns exactly one skill (fixed `SkillDirName`, usually the CLI name).
 ### Commands
 
 ```text
+<cli> skill --help
 <cli> skill --show [--header]
 <cli> skill --install [OPTIONS] [<dir>]
+<cli> skill --install --help
 
 # recommended strongly
 <cli> skill --list
@@ -260,6 +309,11 @@ batch-update already-installed copies.
 ### Commands
 
 ```text
+# help at each level
+<cli> skill --help
+<cli> skills --help
+<cli> skills update --help
+
 # list — aliases
 <cli> skills
 <cli> skill --list
@@ -271,6 +325,7 @@ batch-update already-installed copies.
 
 <cli> skill --install <name> [OPTIONS] [<dir>]
 <cli> skill <name> --install [OPTIONS] [<dir>]
+<cli> skill --install <name> --help
 
 # refresh installs that already have SKILL.md (local and/or --global)
 <cli> skills update [OPTIONS] [<dir>]
@@ -498,10 +553,12 @@ Each node is a directory containing `SKILL.md` (not `topics/<name>.md`).
 ### Commands
 
 ```text
+<cli> skill --help
 <cli> skill --show [--header]                 # root index
 <cli> skill --show <topic>[/<sub>…]           # nested SKILL.md
 <cli> skill <topic>[/<sub>…] --show           # same (both orders)
 <cli> skill --install [OPTIONS] [<dir>]       # root SKILL.md + all nested SKILL.md
+<cli> skill --install --help
 
 # recommended strongly
 <cli> skill --list
@@ -775,26 +832,30 @@ Intermediate directories that have children still ship their own `SKILL.md` so
 3. Actions are **`--show` / `--install` / `--list` only** (no `show`/`install` subcommands)
 4. Both flag orders work (flag before or after name/path)
 5. Default install dir is `.agents/skills/<name>/`
-6. **Recommended strongly:** `--header` with `--show`, `--list`
+6. **`--help` at every level:** root, `skill`, `skill --install`, and (Shape 2) `skills` / `skills update`
+7. Set `SingleSkill.Help` / `Registry.Help` (or accept defaults); install help via `HandleInstall`
+8. **Recommended strongly:** `--header` with `--show`, `--list`
 
 **Shape 2**
 
-7. Stable `knownSkillNames()` for list/update order  
-8. `skills` ≡ `skill --list` / `-l`  
-9. `skills update` via `HandleUpdateMany`  
-10. Register every skill’s embed + help text lists  
+9. Stable `knownSkillNames()` for list/update order  
+10. `skills` ≡ `skill --list` / `-l`  
+11. `skills update` via `HandleUpdateMany`  
+12. Register every skill’s embed + help text lists  
+13. `skills --help` and `skills update --help` work  
 
 **Shape 3**
 
-11. Every node is `<path>/SKILL.md` (not `topics/<path>.md`)  
-12. Frontmatter `name` is `root/sub/…` matching the directory path  
-13. `skill --show a/b` reads `a/b/SKILL.md`  
-14. Install passes nested `SKILL.md` files as `ExtraFiles`  
-15. Reject empty / `.` / `..` path segments  
-16. Index root lists topics and `--show` examples  
+14. Every node is `<path>/SKILL.md` (not `topics/<path>.md`)  
+15. Frontmatter `name` is `root/sub/…` matching the directory path  
+16. `skill --show a/b` reads `a/b/SKILL.md`  
+17. Install passes nested `SKILL.md` files as `ExtraFiles`  
+18. Reject empty / `.` / `..` path segments  
+19. Index root lists topics and `--show` examples  
 
 ---
 
 ## See also
 
-- `flags-parsing/subcommand` — sub-command dispatch patterns for CLI routers
+- `flags-parsing/subcommand` — sub-command dispatch + **every level needs `--help`**
+- `flags-parsing` — less-flags `Help(...)` options

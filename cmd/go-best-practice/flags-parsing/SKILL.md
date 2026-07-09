@@ -1,7 +1,7 @@
 ---
 name: go-best-practice/flags-parsing
 description: >-
-  CLI flag parsing with less-flags.
+  CLI flag parsing with less-flags; nested CLIs need --help at every level.
 ---
 
 # flags — CLI flag parsing
@@ -67,6 +67,14 @@ func main() {
 - `HelpFunc("-h,--help", fn)` — calls `fn` and exits 0.
 - `HelpNoExit()` — do not exit on help; `Parse` returns `lessflags.ErrHelp`.
 
+### Nested CLIs: every sub-command level needs `--help`
+
+A single top-level `Help(...)` is not enough once you dispatch to
+sub-commands. Users run `mytool <cmd> --help` to learn **that** command's
+flags. Wire `-h`/`--help` in **every** handler (and empty-args → that
+level's help). Patterns and a full example live in
+`flags-parsing/subcommand`.
+
 ## Multiple flag names
 
 Comma-separate aliases in the name string:
@@ -87,6 +95,6 @@ lessflags.String("-o,--output", &output)
 Reveal with:
 
 ```bash
-go-best-practice flags-parsing/types
-go-best-practice flags-parsing/subcommand
+go-best-practice skill --show flags-parsing/types
+go-best-practice skill --show flags-parsing/subcommand
 ```
