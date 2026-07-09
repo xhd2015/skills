@@ -94,7 +94,7 @@ func singleSkill() *skillcmd.SingleSkill {
 	return &skillcmd.SingleSkill{
 		Name:        skillName,
 		RootContent: skillTemplate,
-		Usage:       "skill --install",
+		Usage:       "playwright-debug skill --install",
 	}
 }
 

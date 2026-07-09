@@ -43,8 +43,34 @@ Commands:
 Topics are nested directories with SKILL.md. Address a nested topic with a
 slash-separated path, e.g. "flags-parsing/types", via skill --show.
 
+Run go-best-practice skill --help for skill subcommand options.
+Run go-best-practice skill --install --help for install flags.
+
 Options:
   -h, --help    Show this help message
+`
+
+const skillHelp = `Usage: go-best-practice skill --show [--header] [<topic-path>]
+       go-best-practice skill <topic-path> --show [--header]
+       go-best-practice skill --install [OPTIONS] [<dir>]
+       go-best-practice skill --list
+
+Show the root SKILL.md index or a nested topic (path/SKILL.md).
+Install copies SKILL.md and nested topics into agent skill directories.
+List prints the skill name (go-best-practice).
+
+Examples:
+  go-best-practice skill --show
+  go-best-practice skill --show flags-parsing/types
+  go-best-practice skill flags-parsing/types --show
+  go-best-practice skill --install --dry-run
+  go-best-practice skill --install --help
+
+Options:
+  --show [--header] [path]   Print skill or topic content (header-only with --header)
+  --install [OPTIONS] [dir]  Install skill files (see --install --help)
+  --list                     Print skill directory name
+  -h, --help                 Show this help message
 `
 
 func main() {
@@ -86,6 +112,7 @@ func singleSkill() *skillcmd.SingleSkill {
 		RootContent: skillTemplate,
 		TreeFS:      skillTreeFS,
 		Usage:       "go-best-practice skill --install",
+		Help:        skillHelp,
 	}
 }
 

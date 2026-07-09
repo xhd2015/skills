@@ -14,6 +14,36 @@ type SingleSkill struct {
 	TreeFS      fs.FS // optional; path "a/b" → "a/b/SKILL.md"
 	ExtraFiles  []InstallFile
 	Usage       string
+	// Help is printed for skill -h/--help (and --show|--list with --help).
+	// When empty, DefaultSingleSkillHelp(Usage, Name) is used.
+	Help string
+}
+
+// DefaultSingleSkillHelp returns a generic skill subcommand help block.
+func DefaultSingleSkillHelp(usage, skillName string) string {
+	usage = strings.TrimSpace(usage)
+	if usage == "" {
+		usage = "skill --install"
+	}
+	name := strings.TrimSpace(skillName)
+	if name == "" {
+		name = "<skill-name>"
+	}
+	return fmt.Sprintf(`Usage: skill --show [--header] [<topic-path>]
+       skill <topic-path> --show [--header]
+       skill --install [OPTIONS] [<dir>]
+       skill --list
+
+Show the embedded SKILL.md (root) or a nested topic path (path/SKILL.md).
+Install copies SKILL.md (and nested topics) to agent skill directories.
+List prints the skill directory name (%s).
+
+Install usage: %s [OPTIONS] [<dir>]
+  Run skill --install --help for install flags (--global, --cursor, …).
+
+Options:
+  -h, --help    Show this help message
+`, name, usage)
 }
 
 // Handle runs list/show/install for this skill using ParseSkillArgs flag surface.
@@ -23,6 +53,9 @@ func (s *SingleSkill) Handle(args []string) error {
 		return err
 	}
 	switch parsed.Action {
+	case ActionHelp:
+		fmt.Print(s.helpText())
+		return nil
 	case ActionList:
 		fmt.Println(s.Name)
 		return nil
@@ -33,6 +66,13 @@ func (s *SingleSkill) Handle(args []string) error {
 	default:
 		return fmt.Errorf("unknown action: %s", parsed.Action)
 	}
+}
+
+func (s *SingleSkill) helpText() string {
+	if strings.TrimSpace(s.Help) != "" {
+		return s.Help
+	}
+	return DefaultSingleSkillHelp(s.Usage, s.Name)
 }
 
 func (s *SingleSkill) handleShow(header bool, rest []string) error {

@@ -11,6 +11,7 @@ const (
 	ActionShow    Action = "show"
 	ActionInstall Action = "install"
 	ActionList    Action = "list"
+	ActionHelp    Action = "help"
 )
 
 // ParsedArgs is the result of scanning skill argv for action flags.
@@ -27,18 +28,29 @@ var skillArgKind = map[string]string{
 	"--list":    "list",
 	"-l":        "list",
 	"--header":  "header",
+	"-h":        "help",
+	"--help":    "help",
 }
 
 // ParseSkillArgs scans args for skill action flags only (--show, --install,
-// --list / -l, optional --header). Remaining tokens stay in Rest (topic path,
-// skill name, install flags like --global). Exactly one of show/install/list
-// is required; combining --show with --install is an error.
+// --list / -l, optional --header, -h/--help). Remaining tokens stay in Rest
+// (topic path, skill name, install flags like --global).
+//
+// Help rules (so each skill level is explorable):
+//   - -h/--help with no --show/--install/--list → ActionHelp
+//   - -h/--help with --show or --list → ActionHelp (skill-level help)
+//   - -h/--help with --install only → ActionInstall and --help left in Rest
+//     so HandleInstall can print install usage
+//
+// Exactly one of show/install/list is required when help is not selected for
+// the skill-level path; combining --show with --install is an error.
 func ParseSkillArgs(args []string) (ParsedArgs, error) {
 	var (
 		show    bool
 		install bool
 		list    bool
 		header  bool
+		help    bool
 		rest    []string
 	)
 	for _, a := range args {
@@ -56,7 +68,26 @@ func ParseSkillArgs(args []string) (ParsedArgs, error) {
 			list = true
 		case "header":
 			header = true
+		case "help":
+			help = true
 		}
+	}
+
+	// Install owns its own --help (targets, --global, etc.).
+	if help && install && !show && !list {
+		rest = append(rest, "--help")
+		return ParsedArgs{
+			Action: ActionInstall,
+			Rest:   rest,
+		}, nil
+	}
+
+	// Skill-level help: bare --help, or --help with show/list.
+	if help {
+		return ParsedArgs{
+			Action: ActionHelp,
+			Rest:   rest,
+		}, nil
 	}
 
 	n := 0
@@ -74,13 +105,13 @@ func ParseSkillArgs(args []string) (ParsedArgs, error) {
 		action = ActionList
 	}
 	if n == 0 {
-		return ParsedArgs{}, fmt.Errorf("expected one of --show, --install, or --list")
+		return ParsedArgs{}, fmt.Errorf("expected one of --show, --install, or --list (try --help)")
 	}
 	if n > 1 {
 		if show && install {
 			return ParsedArgs{}, fmt.Errorf("cannot combine --show and --install")
 		}
-		return ParsedArgs{}, fmt.Errorf("expected exactly one of --show, --install, or --list")
+		return ParsedArgs{}, fmt.Errorf("expected exactly one of --show, --install, or --list (try --help)")
 	}
 	if header && action != ActionShow {
 		return ParsedArgs{}, fmt.Errorf("--header is only valid with --show")

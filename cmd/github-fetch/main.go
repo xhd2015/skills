@@ -90,6 +90,6 @@ func handleSkill(args []string) error {
 	return (&skillcmd.SingleSkill{
 		Name:        skillName,
 		RootContent: skillTemplate,
-		Usage:       "skill --install",
+		Usage:       "github-fetch skill --install",
 	}).Handle(args)
 }
