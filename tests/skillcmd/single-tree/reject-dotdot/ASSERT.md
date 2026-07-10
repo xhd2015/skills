@@ -1,14 +1,14 @@
 ## Expected
 
-- Scenario-specific success or error as asserted.
+- Non-empty error for invalid `../x` path segment.
 
 ## Side Effects
 
-- install-extra-files creates nested skill-cli/SKILL.md under the skill dir.
+- None.
 
 ## Errors
 
-- reject-dotdot expects a non-empty error.
+- Error mentions invalid path / `..` / segment.
 
 ```go
 import (

@@ -1,3 +1,11 @@
+# Scenario
+
+**Feature**: ExtraFiles path `"SKILL.md"` is rejected
+
+```
+HandleInstall(ExtraFiles Path="SKILL.md") -> cannot replace SKILL.md
+```
+
 ## Preconditions
 - An extra file has path `"SKILL.md"` (invalid — an extra file must not replace the main SKILL.md).
 

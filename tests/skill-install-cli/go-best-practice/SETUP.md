@@ -22,7 +22,7 @@ user -> go-best-practice install -> skill --install equivalent
 
 ## Context
 
-- Embedded assets include root SKILL.md and nested `path/SKILL.md` extras
+- Embedded assets include root SKILL.md and nested `path/TOPIC.md` extras
   (migrated from `topics/*.md`).
 
 ```go

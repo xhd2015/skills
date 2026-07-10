@@ -7,11 +7,11 @@ import (
 )
 
 // SingleSkill hosts one skill definition with optional nested TreeFS of
-// path/SKILL.md files and optional ExtraFiles for install.
+// path/TOPIC.md files and optional ExtraFiles for install.
 type SingleSkill struct {
 	Name        string
 	RootContent string
-	TreeFS      fs.FS // optional; path "a/b" → "a/b/SKILL.md"
+	TreeFS      fs.FS // optional; path "a/b" → "a/b/TOPIC.md"
 	ExtraFiles  []InstallFile
 	Usage       string
 	// Help is printed for skill -h/--help (and --show|--list with --help).
@@ -35,8 +35,8 @@ func DefaultSingleSkillHelp(usage, skillName string) string {
        skill --install [OPTIONS] [<dir>]
        skill --list
 
-Show the embedded SKILL.md (root) or a nested topic path (path/SKILL.md).
-Install copies SKILL.md (and nested topics) to agent skill directories.
+Show the embedded SKILL.md (root) or a nested topic path (path/TOPIC.md).
+Install copies SKILL.md (and nested TOPIC.md topics) to agent skill directories.
 List prints the skill name (%s); when nested topics exist, also lists all topic paths.
 
 Install usage: %s [OPTIONS] [<dir>]

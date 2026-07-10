@@ -1,3 +1,11 @@
+# Scenario
+
+**Feature**: `--cursor` installs to `.cursor/skills/<name>` locally
+
+```
+HandleInstall(--cursor) -> .cursor/skills/example-skill/SKILL.md
+```
+
 ## Preconditions
 - No pre-existing target directory.
 - The `--cursor` flag is passed (without `--global`).

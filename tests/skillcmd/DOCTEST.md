@@ -18,9 +18,9 @@ Participants:
   path, skill name, install flags like `--global`, install dir). Rejects zero or
   multiple actions and rejects combining `--show` with `--install`.
 - **SingleSkill** — one skill definition (`Name`, `RootContent`, optional
-  `TreeFS` of nested `path/SKILL.md`, optional `ExtraFiles`). `Handle` runs
-  list/show/install for that skill; nested show maps `a/b` → `a/b/SKILL.md` and
-  rejects empty / `.` / `..` segments.
+  `TreeFS` of nested `path/TOPIC.md`, optional `ExtraFiles`). `Handle` runs
+  list/show/install for that skill; nested show maps `a/b` → `a/b/TOPIC.md` and
+  rejects empty / `.` / `..` segments. Root index remains `SKILL.md` only.
 - **Registry** — ordered list of registered skills. `HandleSkill` shows/installs
   by name (both flag orders); `HandleSkills` lists or runs batch update.
 - **File header** — `GetHeader` / `ParseHeader` / `FormatHeaderWithDelimiters`
@@ -28,14 +28,17 @@ Participants:
 - **Install/Update** — `HandleInstall` / `HandleUpdate` / `HandleUpdateMany`
   write or refresh `.<tool>/skills/<name>/` layouts (migrated from `install`).
   Batch update prints `skill not installed: <name>` when no `SKILL.md` exists.
+  Install inventory treats unplanned on-disk files as orphans (delete) and uses
+  incremental create/update/delete (see `tests/install` inventory leaves).
 
 Behaviors:
 
 - Actions are **flags only** — no word subcommands `show` / `install`.
 - Both orders work: `--show <path>` and `<path> --show` (path lands in Rest).
 - Default install target: `.agents/skills/<SkillDirName>/`.
-- Nested install ExtraFiles use `skill-cli/SKILL.md` style paths, not
-  `topics/*.md`.
+- Nested install ExtraFiles use `path/TOPIC.md` (TreeFS load/list/collect), not
+  nested `path/SKILL.md` and not `topics/*.md`. Nested `SKILL.md` if present in
+  TreeFS is ignored for topic discovery.
 
 ## Decision Tree
 
@@ -56,10 +59,11 @@ skillcmd/
 │   ├── show-header
 │   ├── list
 │   └── install-dry-run
-├── single-tree/                   # SingleSkill with nested path/SKILL.md
+├── single-tree/                   # SingleSkill with nested path/TOPIC.md
 │   ├── show-nested-path
 │   ├── reject-dotdot
-│   └── install-extra-files
+│   ├── install-extra-files
+│   └── list-topics
 ├── registry/                      # multi-skill host
 │   ├── list-skills
 │   ├── show-by-name/
@@ -93,9 +97,10 @@ skillcmd/
 | `single-flat/show-header` | `--show --header` prints delimiters + name, no body |
 | `single-flat/list` | `--list` prints skill Name |
 | `single-flat/install-dry-run` | `--install --dry-run` mentions `.agents/skills/<name>` |
-| `single-tree/show-nested-path` | `--show a/b` prints nested SKILL.md body |
+| `single-tree/show-nested-path` | `--show a/b` prints nested TOPIC.md body |
 | `single-tree/reject-dotdot` | `--show ../x` errors on invalid segment |
-| `single-tree/install-extra-files` | install writes `skill-cli/SKILL.md` extra path |
+| `single-tree/install-extra-files` | install writes `skill-cli/TOPIC.md` (not nested SKILL.md / topics/*) |
+| `single-tree/list-topics` | `--list` lists skill name + topics from `**/TOPIC.md` |
 | `registry/list-skills` | `--list` lists registered names (+ description) |
 | `registry/show-by-name/flag-before-name` | `--show foo` prints foo content |
 | `registry/show-by-name/name-before-flag` | `foo --show` prints same content |
@@ -123,7 +128,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
@@ -165,7 +169,7 @@ type Request struct {
 	// SingleSkill / shared skill identity
 	SkillName   string
 	RootContent string
-	// TreeFiles maps slash paths (e.g. "a/b/SKILL.md") → file content.
+	// TreeFiles maps slash paths (e.g. "a/b/TOPIC.md") → file content.
 	// When non-empty, SingleSkill.TreeFS is built from this map.
 	TreeFiles map[string]string
 	// ExtraFiles overrides auto-collection from TreeFiles when non-nil.
@@ -325,6 +329,9 @@ func buildSingleSkill(req *Request) *skillcmd.SingleSkill {
 		RootContent: req.RootContent,
 		Usage:       req.Usage,
 	}
+	// Explicit ExtraFiles override only when the leaf sets the field.
+	// When nil, SingleSkill.install derives from TreeFS via collectTreeSkillFiles
+	// (must discover nested TOPIC.md, not nested SKILL.md).
 	if req.ExtraFiles != nil {
 		sk.ExtraFiles = req.ExtraFiles
 	}
@@ -334,20 +341,6 @@ func buildSingleSkill(req *Request) *skillcmd.SingleSkill {
 			m[p] = &fstest.MapFile{Data: []byte(content)}
 		}
 		sk.TreeFS = fs.FS(m)
-		if req.ExtraFiles == nil {
-			// Derive ExtraFiles from tree paths (nested SKILL.md only).
-			var extras []skillcmd.InstallFile
-			for p, content := range req.TreeFiles {
-				if path.Base(p) != "SKILL.md" || p == "SKILL.md" {
-					continue
-				}
-				extras = append(extras, skillcmd.InstallFile{
-					Path:    p,
-					Content: []byte(content),
-				})
-			}
-			sk.ExtraFiles = extras
-		}
 	}
 	return sk
 }

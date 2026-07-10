@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+// nestedTopicFile is the filename for nested multi-topic content.
+// Nested topics use TOPIC.md (not SKILL.md) so agent skill loaders do not
+// treat them as separate top-level skills after install.
+const nestedTopicFile = "TOPIC.md"
+
 // validatePathSegments rejects empty, ".", and ".." path segments.
 func validatePathSegments(segments []string) error {
 	for _, s := range segments {
@@ -18,7 +23,7 @@ func validatePathSegments(segments []string) error {
 	return nil
 }
 
-// loadTreeSkill reads path/SKILL.md from treeFS. topicPath is slash-separated
+// loadTreeSkill reads path/TOPIC.md from treeFS. topicPath is slash-separated
 // (e.g. "a/b"). Empty path is not valid here — callers use RootContent for root.
 func loadTreeSkill(treeFS fs.FS, topicPath string) (string, error) {
 	topicPath = strings.Trim(topicPath, "/")
@@ -29,7 +34,7 @@ func loadTreeSkill(treeFS fs.FS, topicPath string) (string, error) {
 	if err := validatePathSegments(segments); err != nil {
 		return "", err
 	}
-	embedPath := path.Join(topicPath, "SKILL.md")
+	embedPath := path.Join(topicPath, nestedTopicFile)
 	data, err := fs.ReadFile(treeFS, embedPath)
 	if err != nil {
 		return "", fmt.Errorf("read skill %s: %w", topicPath, err)
@@ -38,8 +43,8 @@ func loadTreeSkill(treeFS fs.FS, topicPath string) (string, error) {
 }
 
 // ListTreeTopics returns sorted slash-separated topic paths for every nested
-// path/SKILL.md under treeFS (e.g. "flags-parsing", "flags-parsing/types").
-// Root-level SKILL.md is not a topic path.
+// path/TOPIC.md under treeFS (e.g. "flags-parsing", "flags-parsing/types").
+// Root-level SKILL.md is not a topic path; nested SKILL.md files are ignored.
 func ListTreeTopics(treeFS fs.FS) ([]string, error) {
 	if treeFS == nil {
 		return nil, nil
@@ -53,14 +58,15 @@ func ListTreeTopics(treeFS fs.FS) ([]string, error) {
 			return nil
 		}
 		p = path.Clean(p)
-		if path.Base(p) != "SKILL.md" {
+		if path.Base(p) != nestedTopicFile {
 			return nil
 		}
-		if p == "SKILL.md" || p == "./SKILL.md" {
+		// TOPIC.md should never be at root as the skill index, but skip defensively.
+		if p == nestedTopicFile || p == "./"+nestedTopicFile {
 			return nil
 		}
-		rel := strings.TrimSuffix(p, "/SKILL.md")
-		rel = strings.TrimSuffix(rel, "SKILL.md")
+		rel := strings.TrimSuffix(p, "/"+nestedTopicFile)
+		rel = strings.TrimSuffix(rel, nestedTopicFile)
 		rel = strings.Trim(rel, "/")
 		if rel == "" {
 			return nil
@@ -98,8 +104,8 @@ func FormatTopicIndex(topics []string) string {
 	return b.String()
 }
 
-// collectTreeSkillFiles walks treeFS and returns every nested path/SKILL.md
-// (excluding a root-level SKILL.md) as InstallFile entries.
+// collectTreeSkillFiles walks treeFS and returns every nested path/TOPIC.md
+// as InstallFile entries (root SKILL.md is never included).
 func collectTreeSkillFiles(treeFS fs.FS) ([]InstallFile, error) {
 	var files []InstallFile
 	err := fs.WalkDir(treeFS, ".", func(p string, d fs.DirEntry, err error) error {
@@ -111,10 +117,10 @@ func collectTreeSkillFiles(treeFS fs.FS) ([]InstallFile, error) {
 		}
 		// normalize for path.Base / comparisons (WalkDir uses /)
 		p = path.Clean(p)
-		if path.Base(p) != "SKILL.md" {
+		if path.Base(p) != nestedTopicFile {
 			return nil
 		}
-		if p == "SKILL.md" || p == "./SKILL.md" {
+		if p == nestedTopicFile || p == "./"+nestedTopicFile {
 			return nil
 		}
 		data, err := fs.ReadFile(treeFS, p)

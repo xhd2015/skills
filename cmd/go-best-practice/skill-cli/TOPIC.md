@@ -19,7 +19,7 @@ Prefer `github.com/xhd2015/skills/skillcmd` (install/update, header helpers,
 |-------|------|----------------|
 | **1. Single-skill CLI** | The binary *is* one skill | `<cli> skill --show` / `skill --install` |
 | **2. Multi-skill host** | One binary registers many skills | `<cli> skills` · `skill --show <name>` · `skills update` |
-| **3. Topic discovery** | One skill, large tree of nested `SKILL.md` | Shape 1 + `skill --show <topic>[/<sub>…]` |
+| **3. Topic discovery** | One skill, large tree of nested `TOPIC.md` | Shape 1 + `skill --show <topic>[/<sub>…]` |
 
 Shape 3 extends Shape 1 (same install surface; nested skill dirs under the package root).
 
@@ -154,7 +154,7 @@ Imperative workflow for the agent…
 ```text
 .<tool>/skills/<SkillDirName>/
 ├── SKILL.md
-└── <ExtraFiles…>          # optional (nested skill dirs for Shape 3)
+└── <ExtraFiles…>          # optional (nested TOPIC.md for Shape 3)
 ```
 
 | Selection | Path (cwd-relative) | With `--global` |
@@ -548,13 +548,15 @@ var SkillFile string
 
 ---
 
-## Shape 3 — Single skill with nested topic `SKILL.md`s
+## Shape 3 — Single skill with nested topic `TOPIC.md`s
 
-Same as Shape 1 for install/list/header, plus a **directory tree of skills**.
-Each node is a directory containing `SKILL.md` (not `topics/<name>.md`).
+Same as Shape 1 for install/list/header, plus a **directory tree of topics**.
+Each nested node is a directory containing `TOPIC.md` (not nested `SKILL.md`,
+not `topics/<name>.md`). Nested `TOPIC.md` files are **not** agent-discovered
+skills after install.
 
 - Root `SKILL.md` is the **index** (topic list + `--show` retrieve commands).
-- Sub-topic path `a/b` maps to file `a/b/SKILL.md`.
+- Sub-topic path `a/b` maps to file `a/b/TOPIC.md`.
 - Frontmatter `name` follows **`{root}/{sub-path}`** (slash-separated).
 
 ### Commands
@@ -562,9 +564,9 @@ Each node is a directory containing `SKILL.md` (not `topics/<name>.md`).
 ```text
 <cli> skill --help                            # usage + Available topics: index
 <cli> skill --show [--header]                 # root index
-<cli> skill --show <topic>[/<sub>…]           # nested SKILL.md
+<cli> skill --show <topic>[/<sub>…]           # nested TOPIC.md
 <cli> skill <topic>[/<sub>…] --show           # same (both orders)
-<cli> skill --install [OPTIONS] [<dir>]       # root SKILL.md + all nested SKILL.md
+<cli> skill --install [OPTIONS] [<dir>]       # root SKILL.md + all nested TOPIC.md
 <cli> skill --install --help
 
 # required for multi-topic: skill name + every nested path
@@ -583,13 +585,13 @@ my-skill/
 ├── SKILL.md                          # name: my-skill
 ├── main.go
 ├── flags-parsing/
-│   ├── SKILL.md                      # name: my-skill/flags-parsing
+│   ├── TOPIC.md                      # name: my-skill/flags-parsing
 │   ├── types/
-│   │   └── SKILL.md                  # name: my-skill/flags-parsing/types
+│   │   └── TOPIC.md                  # name: my-skill/flags-parsing/types
 │   └── subcommand/
-│       └── SKILL.md                  # name: my-skill/flags-parsing/subcommand
+│       └── TOPIC.md                  # name: my-skill/flags-parsing/subcommand
 └── skill-cli/
-    └── SKILL.md                      # name: my-skill/skill-cli
+    └── TOPIC.md                      # name: my-skill/skill-cli
 ```
 
 After install:
@@ -597,10 +599,10 @@ After install:
 ```text
 .agents/skills/my-skill/
 ├── SKILL.md
-├── flags-parsing/SKILL.md
-├── flags-parsing/types/SKILL.md
-├── flags-parsing/subcommand/SKILL.md
-└── skill-cli/SKILL.md
+├── flags-parsing/TOPIC.md
+├── flags-parsing/types/TOPIC.md
+├── flags-parsing/subcommand/TOPIC.md
+└── skill-cli/TOPIC.md
 ```
 
 ### Index SKILL.md (required pattern)
@@ -630,7 +632,7 @@ List topics and show **retrieve** examples (domain commands — allowed here):
       - `subcommand` — dispatcher patterns
     - `skill-cli` — skill CLI shapes
 
-### Sub-topic SKILL.md example
+### Sub-topic TOPIC.md example
 
     ---
     name: my-skill/flags-parsing/types
@@ -642,7 +644,7 @@ List topics and show **retrieve** examples (domain commands — allowed here):
 
     …
 
-### Brief main.go (path → `…/SKILL.md`)
+### Brief main.go (path → `…/TOPIC.md`)
 
 ```go
 package main
@@ -755,7 +757,7 @@ func parseSkillFlags(args []string) (show, installMode, list, header bool, rest 
 	return
 }
 
-// loadSkill maps "" → root skillContent; "a/b" → a/b/SKILL.md in skillTreeFS.
+// loadSkill maps "" → root skillContent; "a/b" → a/b/TOPIC.md in skillTreeFS.
 func loadSkill(topicPath string) (string, error) {
 	topicPath = strings.Trim(topicPath, "/")
 	if topicPath == "" {
@@ -766,7 +768,7 @@ func loadSkill(topicPath string) (string, error) {
 			return "", fmt.Errorf("invalid topic path segment: %q", s)
 		}
 	}
-	embedPath := path.Join(topicPath, "SKILL.md")
+	embedPath := path.Join(topicPath, "TOPIC.md")
 	data, err := skillTreeFS.ReadFile(embedPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -796,11 +798,11 @@ func collectNestedSkillFiles() ([]install.InstallFile, error) {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		if path.Base(p) != "SKILL.md" {
+		// Nested topics use TOPIC.md so agent loaders do not treat them as skills.
+		if path.Base(p) != "TOPIC.md" {
 			return nil
 		}
-		// skip if any root-level SKILL.md was embedded into the tree FS
-		if p == "SKILL.md" {
+		if p == "TOPIC.md" {
 			return nil
 		}
 		data, err := skillTreeFS.ReadFile(p)
@@ -825,12 +827,12 @@ const help = `Usage: my-skill skill --show [--header]
 | File | `name` field |
 |------|----------------|
 | `./SKILL.md` | `my-skill` |
-| `flags-parsing/SKILL.md` | `my-skill/flags-parsing` |
-| `flags-parsing/types/SKILL.md` | `my-skill/flags-parsing/types` |
+| `flags-parsing/TOPIC.md` | `my-skill/flags-parsing` |
+| `flags-parsing/types/TOPIC.md` | `my-skill/flags-parsing/types` |
 
 Pattern: **`{root-skill-name}/{slash-separated-directory-path}`**.
 
-Intermediate directories that have children still ship their own `SKILL.md` so
+Intermediate directories that have children still ship their own `TOPIC.md` so
 `skill --show flags-parsing` always resolves.
 
 ---
@@ -859,10 +861,10 @@ Intermediate directories that have children still ship their own `SKILL.md` so
 
 **Shape 3**
 
-15. Every node is `<path>/SKILL.md` (not `topics/<path>.md`)  
+15. Every nested node is `<path>/TOPIC.md` (not nested `SKILL.md`, not `topics/<path>.md`)  
 16. Frontmatter `name` is `root/sub/…` matching the directory path  
-17. `skill --show a/b` reads `a/b/SKILL.md`  
-18. Install passes nested `SKILL.md` files as `ExtraFiles`  
+17. `skill --show a/b` reads `a/b/TOPIC.md`  
+18. Install passes nested `TOPIC.md` files as `ExtraFiles`  
 19. Reject empty / `.` / `..` path segments  
 20. Index root lists topics and `--show` examples  
 21. `skill --list` / `skill --help` enumerate full topic inventory (`ListTreeTopics`)  

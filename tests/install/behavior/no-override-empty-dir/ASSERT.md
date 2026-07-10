@@ -1,7 +1,8 @@
 ## Expected
 - No error is returned.
-- stdout contains `"Installed skill to:"` (the empty directory is treated as a fresh install).
+- stdout contains `"Update skill at"` (directory already existed, even though empty).
 - stdout does **not** contain `"Aborted."`.
+- Install still proceeds without confirmation for an empty dir under `--no-override`.
 
 ```go
 import (
@@ -16,8 +17,9 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
-	if !strings.Contains(resp.Stdout, "Installed skill to:") {
-		t.Fatalf("stdout missing 'Installed skill to:':\n%s", resp.Stdout)
+	// Dir existed before install → Update header (not Installed skill to).
+	if !strings.Contains(resp.Stdout, "Update skill at") {
+		t.Fatalf("stdout missing 'Update skill at' for pre-existing empty dir:\n%s", resp.Stdout)
 	}
 	if strings.Contains(resp.Stdout, "Aborted.") {
 		t.Fatalf("stdout should not contain 'Aborted.' for empty directory:\n%s", resp.Stdout)

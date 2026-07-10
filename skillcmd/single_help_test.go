@@ -42,9 +42,9 @@ func TestSingleSkillHandleDefaultHelp(t *testing.T) {
 
 func TestSingleSkillListAndHelpIncludeTopics(t *testing.T) {
 	tree := fstest.MapFS{
-		"flags-parsing/SKILL.md":       &fstest.MapFile{Data: []byte("fp\n")},
-		"flags-parsing/types/SKILL.md": &fstest.MapFile{Data: []byte("types\n")},
-		"skill-cli/SKILL.md":           &fstest.MapFile{Data: []byte("cli\n")},
+		"flags-parsing/TOPIC.md":       &fstest.MapFile{Data: []byte("fp\n")},
+		"flags-parsing/types/TOPIC.md": &fstest.MapFile{Data: []byte("types\n")},
+		"skill-cli/TOPIC.md":           &fstest.MapFile{Data: []byte("cli\n")},
 	}
 	sk := &SingleSkill{
 		Name:        "demo",

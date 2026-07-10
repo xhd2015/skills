@@ -10,6 +10,10 @@ caller -> skillcmd.ParseSkillArgs(args) -> Action + Header + Rest
 caller -> SingleSkill.Handle / Registry.HandleSkill -> stdout | filesystem
 caller -> skillcmd.HandleInstall / HandleUpdateMany -> .agents/skills/<name>/
 
+# nested multi-topic TreeFS uses path/TOPIC.md (root stays SKILL.md)
+caller --show a/b -> loadTreeSkill -> a/b/TOPIC.md
+caller --list -> ListTreeTopics(**/TOPIC.md)
+
 # header helpers wrap YAML frontmatter
 caller -> GetHeader / FormatHeaderWithDelimiters -> YAML text
 ```
@@ -31,7 +35,8 @@ caller -> GetHeader / FormatHeaderWithDelimiters -> YAML text
 
 - Canonical demo skill content uses name `demo-skill` and body marker
   `# Demo Skill Body` unless a leaf overrides.
-- Nested tree demos use `a/b/SKILL.md` and `skill-cli/SKILL.md` paths.
+- Nested tree demos use `a/b/TOPIC.md` and `skill-cli/TOPIC.md` paths
+  (not nested `SKILL.md` / `topics/*.md`).
 
 ```go
 import "testing"
@@ -63,7 +68,7 @@ description: nested skill-cli topic
 
 # Nested Skill-CLI Body
 
-skill-cli nested SKILL.md.
+skill-cli nested TOPIC.md.
 `
 	fooSkillContent = `---
 name: foo

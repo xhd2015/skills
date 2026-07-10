@@ -1,3 +1,12 @@
+# Scenario
+
+**Feature**: ExtraFiles path validation rejects illegal paths
+
+```
+# invalid ExtraFiles path short-circuits before inventory writes
+HandleInstall(ExtraFiles with invalid Path) -> error; no skill dir written
+```
+
 ## Preconditions
 - We are testing extra file path validation — invalid paths should produce errors before any directory modification.
 - These tests verify that `resolveInstallFiles` correctly rejects invalid paths.

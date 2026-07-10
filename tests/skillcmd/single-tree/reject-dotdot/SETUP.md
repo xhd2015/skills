@@ -12,7 +12,7 @@ caller -> SingleSkill.Handle(--show ../x) -> error
 
 ## Steps
 
-1. Configure Args (and ExtraFiles when installing).
+1. Configure Args with invalid `../x` topic path.
 
 ```go
 func Setup(t *testing.T, req *Request) error {

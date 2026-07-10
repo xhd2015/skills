@@ -194,13 +194,13 @@ func TestCollectTopicFiles(t *testing.T) {
 	hasCmdExec := false
 	hasSkillCLI := false
 	for _, f := range files {
-		if f.Path == "SKILL.md" {
-			t.Error("topic files should not include root SKILL.md")
+		if f.Path == "SKILL.md" || f.Path == "TOPIC.md" {
+			t.Error("topic files should not include root skill index")
 		}
-		if f.Path == "cmd-exec/SKILL.md" {
+		if f.Path == "cmd-exec/TOPIC.md" {
 			hasCmdExec = true
 		}
-		if f.Path == "skill-cli/SKILL.md" {
+		if f.Path == "skill-cli/TOPIC.md" {
 			hasSkillCLI = true
 		}
 		if len(f.Content) == 0 {
@@ -208,10 +208,10 @@ func TestCollectTopicFiles(t *testing.T) {
 		}
 	}
 	if !hasCmdExec {
-		t.Error("missing cmd-exec/SKILL.md in collected files")
+		t.Error("missing cmd-exec/TOPIC.md in collected files")
 	}
 	if !hasSkillCLI {
-		t.Error("missing skill-cli/SKILL.md in collected files")
+		t.Error("missing skill-cli/TOPIC.md in collected files")
 	}
 }
 

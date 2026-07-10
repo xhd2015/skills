@@ -1,14 +1,15 @@
 ## Expected
 
-- Scenario-specific success or error as asserted.
+- Nested topic body and frontmatter name are printed from `a/b/TOPIC.md`.
+- Root body is not printed.
 
 ## Side Effects
 
-- install-extra-files creates nested skill-cli/SKILL.md under the skill dir.
+- None (show is read-only).
 
 ## Errors
 
-- reject-dotdot expects a non-empty error.
+- None.
 
 ```go
 import (

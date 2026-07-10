@@ -1,3 +1,11 @@
+# Scenario
+
+**Feature**: ExtraFiles path `".."` is rejected
+
+```
+HandleInstall(ExtraFiles Path="..") -> invalid install file path
+```
+
 ## Preconditions
 - An extra file has path `".."` (invalid — escapes the target directory).
 

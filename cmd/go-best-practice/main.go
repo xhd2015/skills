@@ -15,7 +15,7 @@ import (
 //go:embed SKILL.md
 var skillTemplate string
 
-// Nested topic directories (path/SKILL.md layout).
+// Nested topic directories (path/TOPIC.md layout).
 //
 //go:embed cmd-exec
 //go:embed flags-parsing
@@ -33,13 +33,13 @@ Usage: go-best-practice <command> [ARGS]
 Commands:
   install [<dir>]          Install SKILL.md + nested topics (alias of skill --install)
   skill --show [--header] [path]
-                           Show root SKILL.md or nested path/SKILL.md
-  skill --install [<dir>]  Install SKILL.md + nested topics to a directory
+                           Show root SKILL.md or nested path/TOPIC.md
+  skill --install [<dir>]  Install SKILL.md + nested TOPIC.md topics to a directory
   skill --list             Print skill name and all nested topic paths
   topics                   List all available topics (same tree as skill --list)
   vet [flags] [dirs]       Check codebase for best-practice violations
 
-Topics are nested directories with SKILL.md. Address a nested topic with a
+Topics are nested directories with TOPIC.md. Address a nested topic with a
 slash-separated path, e.g. "flags-parsing/types", via skill --show.
 
 Run go-best-practice skill --help for skill subcommand options.
@@ -54,8 +54,8 @@ const skillHelp = `Usage: go-best-practice skill --show [--header] [<topic-path>
        go-best-practice skill --install [OPTIONS] [<dir>]
        go-best-practice skill --list
 
-Show the root SKILL.md index or a nested topic (path/SKILL.md).
-Install copies SKILL.md and nested topics into agent skill directories.
+Show the root SKILL.md index or a nested topic (path/TOPIC.md).
+Install copies SKILL.md and nested TOPIC.md topics into agent skill directories.
 List prints the skill name and every available topic path.
 --help also lists available topics (see below).
 
@@ -118,7 +118,7 @@ func singleSkill() *skillcmd.SingleSkill {
 }
 
 // listTopics returns all topic paths found under skillTreeFS (directories
-// that contain SKILL.md), slash-separated, e.g. "flags-parsing",
+// that contain TOPIC.md), slash-separated, e.g. "flags-parsing",
 // "flags-parsing/types".
 func listTopics() ([]string, error) {
 	return skillcmd.ListTreeTopics(skillTreeFS)
@@ -133,7 +133,7 @@ func printTopicIndex() error {
 	return nil
 }
 
-// readTopic resolves a slash-separated topic path against nested SKILL.md files.
+// readTopic resolves a slash-separated topic path against nested TOPIC.md files.
 func readTopic(topicPath string) (string, bool, error) {
 	topicPath = strings.Trim(topicPath, "/")
 	if topicPath == "" {
@@ -143,7 +143,7 @@ func readTopic(topicPath string) (string, bool, error) {
 	if err := validateSegments(segments); err != nil {
 		return "", false, err
 	}
-	embedPath := path.Join(topicPath, "SKILL.md")
+	embedPath := path.Join(topicPath, "TOPIC.md")
 	data, err := skillTreeFS.ReadFile(embedPath)
 	if err == nil {
 		return string(data), true, nil
@@ -163,7 +163,7 @@ func validateSegments(segments []string) error {
 	return nil
 }
 
-// collectTopicFiles returns nested SKILL.md files for install ExtraFiles.
+// collectTopicFiles returns nested TOPIC.md files for install ExtraFiles.
 func collectTopicFiles() ([]skillcmd.InstallFile, error) {
 	var files []skillcmd.InstallFile
 	err := fs.WalkDir(skillTreeFS, ".", func(p string, d fs.DirEntry, err error) error {
@@ -174,7 +174,10 @@ func collectTopicFiles() ([]skillcmd.InstallFile, error) {
 			return nil
 		}
 		p = path.Clean(p)
-		if path.Base(p) != "SKILL.md" || p == "SKILL.md" || p == "./SKILL.md" {
+		if path.Base(p) != "TOPIC.md" {
+			return nil
+		}
+		if p == "TOPIC.md" || p == "./TOPIC.md" {
 			return nil
 		}
 		data, err := skillTreeFS.ReadFile(p)

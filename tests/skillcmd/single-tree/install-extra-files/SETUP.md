@@ -1,28 +1,30 @@
 # Scenario
 
-**Feature**: install writes nested skill-cli/SKILL.md extras (not topics/*.md)
+**Feature**: install writes nested skill-cli/TOPIC.md extras (not nested SKILL.md / topics/*)
 
 ```
-caller -> SingleSkill.Handle(--install) -> .agents/.../skill-cli/SKILL.md
+# TreeFS ExtraFiles derived from **/TOPIC.md
+caller -> SingleSkill.Handle(--install)
+  -> .agents/skills/demo-skill/SKILL.md
+  -> .agents/skills/demo-skill/skill-cli/TOPIC.md
+  -> no skill-cli/SKILL.md, no topics/skill-cli.md
 ```
 
 ## Preconditions
 
-- Tree SingleSkill configured by parent.
+- Tree SingleSkill configured by parent with TOPIC.md tree files.
+- ExtraFiles left nil so install derives nested TOPIC.md paths from TreeFS.
 
 ## Steps
 
-1. Configure Args (and ExtraFiles when installing).
+1. Enable workdir and install without dry-run.
+2. Do not override ExtraFiles (harness derives from TreeFiles TOPIC.md paths).
 
 ```go
-import "github.com/xhd2015/skills/skillcmd"
-
 func Setup(t *testing.T, req *Request) error {
 	req.UseWorkDir = true
 	req.Args = []string{"--install"}
-	req.ExtraFiles = []skillcmd.InstallFile{
-		{Path: "skill-cli/SKILL.md", Content: []byte(nestedSkillCLIContent)},
-	}
+	// ExtraFiles remains nil: buildSingleSkill / SingleSkill collect TOPIC.md only.
 	return nil
 }
 ```

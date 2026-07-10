@@ -10,7 +10,7 @@ user -> go-best-practice skill skill-cli --show -> same content
 
 ## Preconditions
 
-- go-best-practice embeds nested skill-cli/SKILL.md after migration.
+- go-best-practice embeds nested skill-cli/TOPIC.md after migration.
 
 ## Steps
 

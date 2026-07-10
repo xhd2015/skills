@@ -1,25 +1,28 @@
 # Scenario
 
-**Feature**: SingleSkill with TreeFS resolves nested path/SKILL.md
+**Feature**: SingleSkill with TreeFS resolves nested path/TOPIC.md
 
 ```
-# nested topic show and install extra files
-caller -> SingleSkill.Handle(--show a/b) -> a/b/SKILL.md content
-caller -> SingleSkill.Handle(--install) -> ExtraFiles include skill-cli/SKILL.md
+# nested topic show, list, and install extra files use TOPIC.md
+caller -> SingleSkill.Handle(--show a/b) -> a/b/TOPIC.md content
+caller -> SingleSkill.Handle(--list) -> topics from **/TOPIC.md
+caller -> SingleSkill.Handle(--install) -> ExtraFiles include skill-cli/TOPIC.md
 ```
 
 ## Preconditions
 
-- TreeFiles map provides nested SKILL.md paths under the skill root.
+- TreeFiles map provides nested TOPIC.md paths under the skill root.
+- Root index content stays on SingleSkill.RootContent (SKILL.md at install root).
 
 ## Steps
 
 1. Set `req.Mode = ModeSingle` with demo root + tree files.
-2. Leaves set show/install Args and optional ExtraFiles.
+2. Leaves set show/list/install Args and optional ExtraFiles overrides.
 
 ## Context
 
 - Invalid path segments (`.`, `..`, empty) are rejected.
+- Nested `SKILL.md` is not the discoverable topic filename.
 
 ```go
 func Setup(t *testing.T, req *Request) error {
@@ -28,8 +31,8 @@ func Setup(t *testing.T, req *Request) error {
 	req.RootContent = demoRootContent
 	req.Usage = "demo-skill skill --install"
 	req.TreeFiles = map[string]string{
-		"a/b/SKILL.md":        nestedABContent,
-		"skill-cli/SKILL.md": nestedSkillCLIContent,
+		"a/b/TOPIC.md":       nestedABContent,
+		"skill-cli/TOPIC.md": nestedSkillCLIContent,
 	}
 	return nil
 }

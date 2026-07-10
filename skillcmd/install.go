@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/xhd2015/less-gen/flags"
@@ -83,12 +84,20 @@ Multiple --cursor/--codex/--opencode/--general-agents flags can be combined to i
 	return nil
 }
 
+// inventoryAction is one create/update/delete in the install plan.
+type inventoryAction struct {
+	op      string // "create", "update", or "delete"
+	absPath string
+	relPath string // relative to skill dir, for sorting
+	content []byte // only for create/update
+}
+
 func installTo(dir string, skillContent string, extraFiles []InstallFile, dryRun bool, noOverride bool) error {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return fmt.Errorf("resolve path: %w", err)
 	}
-	files, err := resolveInstallFiles(absDir, extraFiles)
+	planned, err := buildPlannedFiles(absDir, skillContent, extraFiles)
 	if err != nil {
 		return err
 	}
@@ -97,97 +106,258 @@ func installTo(dir string, skillContent string, extraFiles []InstallFile, dryRun
 	if readErr != nil && !os.IsNotExist(readErr) {
 		return fmt.Errorf("read directory %s: %w", absDir, readErr)
 	}
-
 	exists := readErr == nil
 	nonEmpty := exists && len(entries) > 0
-	needsConfirmation := nonEmpty && noOverride
-	willOverwrite := exists && !noOverride
 
-	skillFile := filepath.Join(absDir, "SKILL.md")
-	newContent := []byte(skillContent)
-	_, same, compareErr := sameFileMD5(skillFile, newContent)
-	if compareErr != nil {
-		return compareErr
+	onDisk, err := listRegularFiles(absDir, exists)
+	if err != nil {
+		return err
 	}
-	if same {
-		for _, f := range files {
-			_, fileSame, compareErr := sameFileMD5(f.dest, f.content)
-			if compareErr != nil {
-				return compareErr
-			}
-			if !fileSame {
-				same = false
-				break
-			}
-		}
+	actions, err := computeInventoryActions(absDir, planned, onDisk)
+	if err != nil {
+		return err
 	}
-
+	if len(actions) == 0 {
+		printUpToDate(absDir, dryRun)
+		return nil
+	}
+	if !dryRun && nonEmpty && noOverride && !confirmOverwrite(absDir) {
+		fmt.Println("Aborted.")
+		return nil
+	}
+	header := installHeader(absDir, exists)
 	if dryRun {
-		if same {
-			fmt.Printf("[dry-run] Skill is up to date: %s\n", absDir)
-			return nil
-		} else if willOverwrite {
-			fmt.Printf("[dry-run] Would overwrite directory: %s\n", absDir)
-		} else if needsConfirmation {
-			fmt.Printf("[dry-run] Would require confirmation before overwriting directory: %s\n", absDir)
-		} else if !exists {
-			fmt.Printf("[dry-run] Would create directory: %s\n", absDir)
-		} else {
-			fmt.Printf("[dry-run] Would use existing directory: %s\n", absDir)
-		}
-		fmt.Printf("[dry-run] Would create file: %s\n", skillFile)
-		for _, f := range files {
-			fmt.Printf("[dry-run] Would create file: %s\n", f.dest)
-		}
+		printInventoryPlan(header, actions, true)
 		return nil
 	}
-
-	if same {
-		fmt.Printf("Skill is up to date: %s\n", absDir)
-		return nil
+	if err := applyInventoryActions(absDir, actions); err != nil {
+		return err
 	}
+	printInventoryPlan(header, actions, false)
+	return nil
+}
 
-	if needsConfirmation {
-		if !confirmOverwrite(absDir) {
-			fmt.Println("Aborted.")
-			return nil
-		}
-		willOverwrite = true
+func printUpToDate(absDir string, dryRun bool) {
+	if dryRun {
+		fmt.Printf("[dry-run] Skill is up to date: %s\n", absDir)
+		return
 	}
+	fmt.Printf("Skill is up to date: %s\n", absDir)
+}
 
-	if willOverwrite {
-		if err := os.RemoveAll(absDir); err != nil {
-			return fmt.Errorf("remove directory %s: %w", absDir, err)
-		}
-		exists = false
-	}
-
+func installHeader(absDir string, exists bool) string {
 	if !exists {
-		if err := os.MkdirAll(absDir, 0755); err != nil {
-			return fmt.Errorf("create directory %s: %w", absDir, err)
+		return fmt.Sprintf("Installed skill to: %s", absDir)
+	}
+	return fmt.Sprintf("Update skill at %s", absDir)
+}
+
+func printInventoryPlan(header string, actions []inventoryAction, dryRun bool) {
+	if dryRun {
+		fmt.Printf("[dry-run] %s\n", header)
+		for _, a := range actions {
+			fmt.Printf("[dry-run]   %s: %s\n", a.op, a.absPath)
+		}
+		return
+	}
+	fmt.Printf("%s\n", header)
+	for _, a := range actions {
+		fmt.Printf("  %s: %s\n", a.op, a.absPath)
+	}
+}
+
+// plannedFile is one path in the desired install set.
+type plannedFile struct {
+	relPath string // slash or OS relative path under skill dir
+	absPath string
+	content []byte
+}
+
+func buildPlannedFiles(absDir string, skillContent string, extraFiles []InstallFile) ([]plannedFile, error) {
+	extras, err := resolveInstallFiles(absDir, extraFiles)
+	if err != nil {
+		return nil, err
+	}
+	planned := make([]plannedFile, 0, 1+len(extras))
+	planned = append(planned, plannedFile{
+		relPath: "SKILL.md",
+		absPath: filepath.Join(absDir, "SKILL.md"),
+		content: []byte(skillContent),
+	})
+	for _, f := range extras {
+		rel, err := filepath.Rel(absDir, f.dest)
+		if err != nil {
+			rel = f.dest
+		}
+		planned = append(planned, plannedFile{
+			relPath: rel,
+			absPath: f.dest,
+			content: f.content,
+		})
+	}
+	return planned, nil
+}
+
+// listRegularFiles returns a map of relPath → absPath for all regular files under absDir.
+// If the directory does not exist, returns an empty map.
+func listRegularFiles(absDir string, exists bool) (map[string]string, error) {
+	out := make(map[string]string)
+	if !exists {
+		return out, nil
+	}
+	err := filepath.WalkDir(absDir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		// Only inventory regular files (skip symlinks to dirs etc. via type check).
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		rel, relErr := filepath.Rel(absDir, p)
+		if relErr != nil {
+			return relErr
+		}
+		if rel == "." {
+			return nil
+		}
+		out[rel] = p
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("scan skill directory %s: %w", absDir, err)
+	}
+	return out, nil
+}
+
+func computeInventoryActions(absDir string, planned []plannedFile, onDisk map[string]string) ([]inventoryAction, error) {
+	plannedRel := make(map[string]plannedFile, len(planned))
+	for _, p := range planned {
+		// Normalize rel path for map key consistency with WalkDir
+		rel := filepath.Clean(p.relPath)
+		plannedRel[rel] = p
+	}
+
+	var creates, updates, deletes []inventoryAction
+
+	for rel, p := range plannedRel {
+		absPath := p.absPath
+		if absPath == "" {
+			absPath = filepath.Join(absDir, rel)
+		}
+		_, diskSame, err := sameFileMD5(absPath, p.content)
+		if err != nil {
+			return nil, err
+		}
+		if _, existsOnDisk := onDisk[rel]; !existsOnDisk {
+			// File missing (or not a regular file we scanned)
+			if !diskSame {
+				creates = append(creates, inventoryAction{
+					op:      "create",
+					absPath: absPath,
+					relPath: rel,
+					content: p.content,
+				})
+			}
+			continue
+		}
+		if !diskSame {
+			updates = append(updates, inventoryAction{
+				op:      "update",
+				absPath: absPath,
+				relPath: rel,
+				content: p.content,
+			})
 		}
 	}
 
-	if err := os.WriteFile(skillFile, newContent, 0644); err != nil {
-		return fmt.Errorf("write SKILL.md: %w", err)
-	}
-	for _, f := range files {
-		if err := os.MkdirAll(filepath.Dir(f.dest), 0755); err != nil {
-			return fmt.Errorf("create directory %s: %w", filepath.Dir(f.dest), err)
+	for rel, absPath := range onDisk {
+		if _, inPlan := plannedRel[rel]; inPlan {
+			continue
 		}
-		if err := os.WriteFile(f.dest, f.content, 0644); err != nil {
-			return fmt.Errorf("write %s: %w", f.dest, err)
+		deletes = append(deletes, inventoryAction{
+			op:      "delete",
+			absPath: absPath,
+			relPath: rel,
+		})
+	}
+
+	sort.Slice(creates, func(i, j int) bool { return creates[i].relPath < creates[j].relPath })
+	sort.Slice(updates, func(i, j int) bool { return updates[i].relPath < updates[j].relPath })
+	sort.Slice(deletes, func(i, j int) bool { return deletes[i].relPath < deletes[j].relPath })
+
+	actions := make([]inventoryAction, 0, len(creates)+len(updates)+len(deletes))
+	actions = append(actions, creates...)
+	actions = append(actions, updates...)
+	actions = append(actions, deletes...)
+	return actions, nil
+}
+
+func applyInventoryActions(absDir string, actions []inventoryAction) error {
+	// Ensure skill root exists when creating files.
+	if err := os.MkdirAll(absDir, 0755); err != nil {
+		return fmt.Errorf("create directory %s: %w", absDir, err)
+	}
+
+	deletedParents := make(map[string]struct{})
+	for _, a := range actions {
+		switch a.op {
+		case "create", "update":
+			if err := os.MkdirAll(filepath.Dir(a.absPath), 0755); err != nil {
+				return fmt.Errorf("create directory %s: %w", filepath.Dir(a.absPath), err)
+			}
+			if err := os.WriteFile(a.absPath, a.content, 0644); err != nil {
+				return fmt.Errorf("write %s: %w", a.absPath, err)
+			}
+		case "delete":
+			if err := os.Remove(a.absPath); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("delete %s: %w", a.absPath, err)
+			}
+			// Track parent for empty-dir cleanup
+			parent := filepath.Dir(a.absPath)
+			if parent != absDir && strings.HasPrefix(parent, absDir+string(os.PathSeparator)) {
+				deletedParents[parent] = struct{}{}
+			}
 		}
 	}
 
-	if willOverwrite {
-		fmt.Printf("Update skill at %s\n", absDir)
-	} else {
-		fmt.Printf("Installed skill to: %s\n", absDir)
-	}
-	fmt.Printf("  - %s\n", skillFile)
-	for _, f := range files {
-		fmt.Printf("  - %s\n", f.dest)
+	// Best-effort: remove empty directories under skill root (deepest first).
+	if len(deletedParents) > 0 {
+		parents := make([]string, 0, len(deletedParents))
+		for p := range deletedParents {
+			parents = append(parents, p)
+		}
+		// Also walk up ancestors under absDir
+		all := make(map[string]struct{})
+		for _, p := range parents {
+			cur := p
+			for cur != absDir && strings.HasPrefix(cur, absDir+string(os.PathSeparator)) {
+				all[cur] = struct{}{}
+				next := filepath.Dir(cur)
+				if next == cur {
+					break
+				}
+				cur = next
+			}
+		}
+		dirs := make([]string, 0, len(all))
+		for d := range all {
+			dirs = append(dirs, d)
+		}
+		// deepest first
+		sort.Slice(dirs, func(i, j int) bool {
+			return strings.Count(dirs[i], string(os.PathSeparator)) > strings.Count(dirs[j], string(os.PathSeparator))
+		})
+		for _, d := range dirs {
+			// Remove only if empty; ignore errors (best-effort).
+			_ = os.Remove(d)
+		}
 	}
 	return nil
 }
@@ -221,13 +391,13 @@ func sameFileMD5(path string, content []byte) (string, bool, error) {
 		if os.IsNotExist(err) {
 			return "", false, nil
 		}
-		return "", false, fmt.Errorf("open existing SKILL.md %s: %w", path, err)
+		return "", false, fmt.Errorf("open existing file %s: %w", path, err)
 	}
 	defer f.Close()
 
 	hash := md5.New()
 	if _, err := io.Copy(hash, f); err != nil {
-		return "", false, fmt.Errorf("read existing SKILL.md %s: %w", path, err)
+		return "", false, fmt.Errorf("read existing file %s: %w", path, err)
 	}
 	currentMD5 := fmt.Sprintf("%x", hash.Sum(nil))
 	return currentMD5, currentMD5 == md5Hex(content), nil

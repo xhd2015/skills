@@ -9,8 +9,8 @@ user -> skill CLI (skill --install) -> install/skillcmd HandleInstall -> stdout 
 # global scope resolves under HOME
 user -> skill CLI (skill --install --global) -> ~/.agents/skills/<name>
 
-# go-best-practice ships nested skill-cli/SKILL.md extras (Shape 3)
-HandleInstall -> SKILL.md + skill-cli/SKILL.md (+ other nested paths)
+# go-best-practice ships nested skill-cli/TOPIC.md extras (Shape 3)
+HandleInstall -> SKILL.md + skill-cli/TOPIC.md (+ other nested paths)
 ```
 
 ## Preconditions

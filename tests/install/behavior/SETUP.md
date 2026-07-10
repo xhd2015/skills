@@ -1,3 +1,12 @@
+# Scenario
+
+**Feature**: HandleInstall behavior flags and basic install headers
+
+```
+# fresh vs existing target dirs and flag interactions
+HandleInstall(args) -> Installed skill to: | Update skill at | Aborted.
+```
+
 ## Preconditions
 - We are testing normal install behavior — stdout output messages and filesystem side effects.
 - The focus is on what `HandleInstall` prints and what files it creates, not on error paths.

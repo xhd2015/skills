@@ -1,3 +1,12 @@
+# Scenario
+
+**Feature**: fresh install when target directory is missing
+
+```
+# no example-skill/ on disk
+HandleInstall(example-skill) -> "Installed skill to: <absDir>"
+```
+
 ## Preconditions
 - The target directory "example-skill" does **not** exist in the working directory.
 

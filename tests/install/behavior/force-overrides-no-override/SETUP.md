@@ -1,3 +1,12 @@
+# Scenario
+
+**Feature**: `--force` overrides `--no-override` without confirmation
+
+```
+example-skill/ non-empty
+HandleInstall(--force --no-override) -> Update skill at; no Aborted
+```
+
 ## Preconditions
 - A non-empty directory "example-skill" exists with a SKILL.md containing `"# old skill\n"`.
 - Both `--force` and `--no-override` flags are passed.
@@ -8,7 +17,7 @@
 
 ## Context
 - `--force` takes precedence over `--no-override` (the code sets `noOverride = false` when `force` is true).
-- The directory should be overwritten without triggering the confirmation prompt.
+- The directory should be updated without triggering the confirmation prompt.
 
 ```go
 func Setup(t *testing.T, req *Request) error {

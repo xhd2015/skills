@@ -1,3 +1,14 @@
+# Scenario
+
+**Feature**: `--no-override` on an empty pre-existing dir does not abort
+
+```
+# empty example-skill/ exists; plan needs create for SKILL.md
+HandleInstall(--no-override example-skill)
+  -> no confirmation / no Aborted
+  -> Update skill at (dir already existed)
+```
+
 ## Preconditions
 - An empty directory "example-skill" exists (no files inside, no SKILL.md).
 - The `--no-override` flag is passed.
@@ -7,8 +18,10 @@
 2. Call `HandleInstall` with `--no-override` and fresh skill content `"# new skill\n"`.
 
 ## Context
-- `--no-override` should only abort when the target directory is **non-empty**.
-- An empty directory should be treated as a fresh install.
+- `--no-override` should only require confirmation when the target directory is
+  **non-empty** and the plan needs create/update/delete.
+- An empty directory needs no confirmation; header is still `Update skill at`
+  because the directory already existed.
 
 ```go
 func Setup(t *testing.T, req *Request) error {

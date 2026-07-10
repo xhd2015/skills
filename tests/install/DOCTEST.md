@@ -1,7 +1,44 @@
 # Install Package Tests
 
 Tests for the `install` package's `HandleInstall` function — verifying output messages,
-filesystem side effects, flag interactions, and extra file path validation.
+filesystem side effects, flag interactions, extra file path validation, and
+skill-dir inventory sync (rsync-like create/update/delete).
+
+# DSN (Domain Specific Notion)
+
+Participants:
+
+- **Caller** — test harness (or a skill CLI) invokes `install.HandleInstall` with
+  skill content, optional `ExtraFiles`, and install flags / target dir.
+- **HandleInstall** — parses flags (`--dry-run`, `--no-override`, `--force`,
+  target tool flags, `--global`), resolves one or more skill target directories,
+  and runs inventory sync per target.
+- **Install plan** — desired regular-file set =
+  `{ "SKILL.md": SkillContent }` ∪ ExtraFiles (relative paths under the skill dir).
+  Nested topics use paths like `a/TOPIC.md` (not nested `SKILL.md`).
+- **Skill directory** — on-disk tree at the resolved target (e.g. `example-skill/`
+  or `.agents/skills/<name>/`). Only files under this root are inventory-managed.
+- **Inventory sync** — compares the plan to **all regular files** under the skill
+  dir (recursive). Missing/different planned paths → create or update; unplanned
+  on-disk files → delete; empty dirs left after deletes are removed best-effort.
+  Does **not** `RemoveAll` the whole skill dir on normal updates.
+
+Behaviors:
+
+- **Up to date** — all planned paths match by content **and** no unplanned files
+  on disk → print `Skill is up to date: <absDir>\n` and write nothing.
+- **Work needed** — print header then per-file actions (absolute paths preferred):
+  - Header: `Installed skill to: <absDir>` only if the skill dir did **not** exist
+    before this install; otherwise `Update skill at <absDir>`.
+  - Detail lines, stable order: all `create: ` (sorted), then `update: `, then
+    `delete: ` (prefix is `create: `/`update: `/`delete: ` with one space after colon).
+  - No MD5 hashes in stdout; last line ends with `\n`.
+- **Dry-run** — same messages with `[dry-run] ` prefix; no write/delete.
+  Up to date dry-run: `[dry-run] Skill is up to date: <absDir>\n` only.
+- **`--no-override`** — if skill dir is non-empty and any create/update/delete is
+  required, confirm (TTY) or abort (non-TTY). Empty or missing dir: no confirmation.
+- **Extra path validation** — reject `.`, `..`, absolute paths, and extra path
+  `SKILL.md` before any inventory work.
 
 ## Decision Tree
 
@@ -11,12 +48,25 @@ tests/install/
 │   ├── fresh-install/                 # New directory → "Installed skill to:"
 │   ├── overwrite-existing/            # Existing directory → "Update skill at"
 │   ├── force-overrides-no-override/   # --force overrides --no-override
-│   ├── no-override-empty-dir/         # --no-override on empty dir → installs normally
+│   ├── no-override-empty-dir/         # --no-override on empty dir → no abort
 │   └── cursor-flag/                   # --cursor installs to .cursor/skills/<name>
-└── extra-files-validation/            # Extra file path validation errors
-    ├── dot-path/                      # Path "." → error
-    ├── dotdot-path/                   # Path ".." → error
-    └── skill-md-path/                 # Path "SKILL.md" → error
+├── extra-files-validation/            # Extra file path validation errors
+│   ├── dot-path/                      # Path "." → error
+│   ├── dotdot-path/                   # Path ".." → error
+│   └── skill-md-path/                 # Path "SKILL.md" → error
+└── inventory/                         # Skill-dir inventory sync (rsync-like)
+    ├── clean-match/                   # disk == plan, no orphans
+    │   ├── apply-up-to-date/          # apply → Skill is up to date; no writes
+    │   └── dry-run-up-to-date/        # --dry-run → [dry-run] Skill is up to date
+    ├── orphan/                        # plan matches + unplanned on-disk files
+    │   ├── apply-deletes/             # delete: orphan; file removed
+    │   └── dry-run-preserves/         # dry-run delete line; file still on disk
+    ├── plan-changed/                  # planned set or content differs
+    │   ├── content-update/            # update: existing path; new content
+    │   ├── drop-nested/               # delete: nested path dropped from plan
+    │   └── rename-skill-to-topic/     # delete: a/SKILL.md + create: a/TOPIC.md
+    └── fresh/                         # skill dir missing
+        └── create-with-extras/        # Installed + create: for root and extras
 ```
 
 ## Test Index
@@ -26,15 +76,24 @@ tests/install/
 | 1 | behavior/fresh-install | Fresh install to non-existent directory prints "Installed skill to:" |
 | 2 | behavior/overwrite-existing | Overwriting existing directory prints "Update skill at" |
 | 3 | behavior/force-overrides-no-override | --force --no-override overwrites without confirmation |
-| 4 | behavior/no-override-empty-dir | --no-override on empty dir installs normally (no abort) |
+| 4 | behavior/no-override-empty-dir | --no-override on empty dir installs without abort (dir existed → Update header) |
 | 5 | behavior/cursor-flag | --cursor installs to .cursor/skills/<name> (local, non-global) |
 | 6 | extra-files-validation/dot-path | Extra file path "." returns error |
 | 7 | extra-files-validation/dotdot-path | Extra file path ".." returns error |
 | 8 | extra-files-validation/skill-md-path | Extra file path "SKILL.md" returns error |
+| 9 | inventory/clean-match/apply-up-to-date | Clean disk==plan → up to date; no file changes |
+| 10 | inventory/clean-match/dry-run-up-to-date | Dry-run clean match → `[dry-run] Skill is up to date` only |
+| 11 | inventory/orphan/apply-deletes | Orphan leftover → not up to date; `delete:`; file gone |
+| 12 | inventory/orphan/dry-run-preserves | Dry-run orphan → delete line; file remains |
+| 13 | inventory/plan-changed/content-update | Content differs → `update:`; new content on disk |
+| 14 | inventory/plan-changed/drop-nested | Nested file removed from plan → `delete:`; gone |
+| 15 | inventory/plan-changed/rename-skill-to-topic | a/SKILL.md → a/TOPIC.md as delete+create |
+| 16 | inventory/fresh/create-with-extras | Missing dir → `Installed skill to:` + sorted `create:` lines |
 
 ## How to Run
 
 ```sh
+doctest vet ./tests/install
 doctest test -v ./tests/install
 ```
 
@@ -70,6 +129,8 @@ type Request struct {
 }
 
 type PreExistingFile struct {
+	// Name is relative to PreExistingDir; may include nested path segments
+	// (slash- or OS-separated). Parents are created with MkdirAll.
 	Name    string
 	Content string
 }
@@ -98,13 +159,17 @@ func Run(t *testing.T, req *Request) (*Response, error) {
 		t.Setenv("HOME", homeDir)
 	}
 
-	// Set up pre-existing directory and files
+	// Set up pre-existing directory and files (nested Names get parent MkdirAll).
 	if req.PreExistingDir != "" {
 		if err := os.MkdirAll(req.PreExistingDir, 0755); err != nil {
 			return nil, err
 		}
 		for _, f := range req.PreExistingFiles {
-			if err := os.WriteFile(filepath.Join(req.PreExistingDir, f.Name), []byte(f.Content), 0644); err != nil {
+			dest := filepath.Join(req.PreExistingDir, filepath.FromSlash(f.Name))
+			if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+				return nil, err
+			}
+			if err := os.WriteFile(dest, []byte(f.Content), 0644); err != nil {
 				return nil, err
 			}
 		}

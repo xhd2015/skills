@@ -1,18 +1,18 @@
 # Scenario
 
-**Feature**: `--show a/b` prints nested SKILL.md content
+**Feature**: `--show a/b` prints nested TOPIC.md content
 
 ```
-caller -> SingleSkill.Handle(--show a/b) -> Nested A/B Body
+caller -> SingleSkill.Handle(--show a/b) -> Nested A/B Body from a/b/TOPIC.md
 ```
 
 ## Preconditions
 
-- Tree SingleSkill configured by parent.
+- Tree SingleSkill configured by parent with `a/b/TOPIC.md`.
 
 ## Steps
 
-1. Configure Args (and ExtraFiles when installing).
+1. Configure Args for nested show.
 
 ```go
 func Setup(t *testing.T, req *Request) error {
