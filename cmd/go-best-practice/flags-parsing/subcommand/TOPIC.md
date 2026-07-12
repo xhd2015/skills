@@ -262,5 +262,9 @@ Options:
 - Point users deeper: top help mentions `mytool <command> --help`.
 - See the `flags-parsing/types` sub-topic for the full list of
   supported target types.
+- For an opaque trailing command line (`myapp --exec <cmd> [args...]`),
+  use `Cut` instead of word dispatch — see `flags-parsing/cut`.
+- To forward a filtered flag set to a child process, use
+  `CollectParsedFlags` — see `flags-parsing/collect`.
 - Skill CLIs: see `skill-cli` for per-level help on `skill` /
   `skills` / `--install`.

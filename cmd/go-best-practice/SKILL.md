@@ -25,8 +25,10 @@ tree; address a sub-topic with a slash-separated path, e.g.
 - `flags-parsing` — CLI flag parsing with
   `github.com/xhd2015/less-flags`
   - `types` — supported target types (`*bool`, `*string`, `*int`,
-    `*time.Duration`, `*[]string`, and `**T` variants)
+    `*time.Duration`, `*[]string`, `Cut`, and `**T` variants)
   - `subcommand` — sub-command dispatcher patterns (with `StopOnFirstArg` and no-toplevel-flags variants)
+  - `cut` — cut flags: consume all remaining tokens after a marker
+  - `collect` — `CollectParsedFlags` / `Flags.Reconstruct` / `Remove`
 - `skill-cli` — skill CLI shapes: single-skill, multi-skill host, topic discovery
 
 ## Usage
@@ -46,4 +48,6 @@ go-best-practice skill --show flags-parsing
 # reveal a sub-topic (slash-separated path; both flag orders)
 go-best-practice skill --show flags-parsing/types
 go-best-practice skill flags-parsing/subcommand --show
+go-best-practice skill --show flags-parsing/cut
+go-best-practice skill --show flags-parsing/collect
 ```

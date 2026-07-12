@@ -17,6 +17,11 @@ supported (the `**T` form lets the caller distinguish "unset" from
 | `Int(names, target)`                | `*int` / `*int64` | `**int` / `**int64` |
 | `Duration(names, target)`           | `*time.Duration`  | `**time.Duration`   |
 | `StringSlice(names, target)`        | `*[]string`       | `**[]string`        |
+| `Cut(names, target)`                | `*[]string`       | `**[]string`        |
+
+`StringSlice` appends one value per occurrence and keeps parsing.
+`Cut` assigns **all tokens after the marker** once and **stops** parsing
+(body not re-parsed; equals form rejected). Recipe: `flags-parsing/cut`.
 
 ## Detecting "unset" with `**T`
 
@@ -45,3 +50,14 @@ myapp --file a.txt --file b.txt --file c.txt
 
 Bool flags may be passed bare (`--verbose`) or with an explicit value
 (`--verbose=true`, `--verbose=false`).
+
+## Cut targets
+
+Public API: `Cut(names, target *[]string)`. Prefer `Cut` when the rest of
+the line is an external command; prefer `StringSlice` for repeatable
+single values. See `flags-parsing/cut`.
+
+## CollectParsedFlags (not a target type)
+
+`CollectParsedFlags(dst *Flags)` records occurrences for
+`Reconstruct` / `Remove`. See `flags-parsing/collect`.

@@ -8,7 +8,8 @@ description: >-
 
 A fluent flag parser for Go, **mainly used for CLI flag parsing**
 (boolean/string/int/duration/string-slice options, with single or
-multiple aliases per flag, and a built-in `--help` path).
+multiple aliases per flag, built-in `--help`, **Cut** for opaque command
+tails, and **CollectParsedFlags** to reconstruct/filter argv).
 
 Install:
 
@@ -84,17 +85,48 @@ lessflags.Bool("-v,--verbose", &verbose)
 lessflags.String("-o,--output", &output)
 ```
 
+## Cut and CollectParsedFlags (overview)
+
+**Cut** — stop parsing at a marker and copy all following tokens into a
+slice (not re-parsed). Use for `myapp --exec <command> [args...]`.
+
+```go
+var execArgs []string
+remain, err := lessflags.Bool("--verbose", &verbose).
+    Cut("--exec", &execArgs).
+    Parse(os.Args[1:])
+```
+
+**CollectParsedFlags** — record each parsed occurrence, then
+`Reconstruct()` argv or `Remove(names)` parent-only flags before
+forwarding to a child.
+
+```go
+var recorded lessflags.Flags
+_, err := lessflags.Bool("--open", &open).
+    Bool("--new-terminal", &nt).
+    CollectParsedFlags(&recorded).
+    Parse(os.Args[1:])
+childArgs := recorded.Remove("--new-terminal").Reconstruct()
+```
+
+Full recipes: `flags-parsing/cut` and `flags-parsing/collect`.
+
 ## Sub-topics
 
 - `flags-parsing/types` — the full list of supported target types
   (`*bool`, `*string`, `*int`/`*int64`, `*time.Duration`, `*[]string`,
-  and their `**T` variants), plus how to detect "unset" lessflags.
+  `Cut`, and their `**T` variants), plus how to detect "unset".
 - `flags-parsing/subcommand` — sub-command dispatcher pattern using
   `StopOnFirstArg`.
+- `flags-parsing/cut` — cut flags (opaque remaining command line).
+- `flags-parsing/collect` — collect, reconstruct, and remove parsed flags.
 
 Reveal with:
 
 ```bash
 go-best-practice skill --show flags-parsing/types
 go-best-practice skill --show flags-parsing/subcommand
+go-best-practice skill --show flags-parsing/cut
+go-best-practice skill --show flags-parsing/collect
 ```
