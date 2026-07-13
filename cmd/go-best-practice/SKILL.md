@@ -22,6 +22,8 @@ tree; address a sub-topic with a slash-separated path, e.g.
 - `cmd-exec` — running external commands with
   `github.com/xhd2015/xgo/support/cmd` (Debug mode, output capture,
   env vars, directory, I/O redirect)
+- `cli-color` — terminal ANSI color: `--color` / `--no-color`, TTY
+  auto, and the `NO_COLOR` env convention
 - `flags-parsing` — CLI flag parsing with
   `github.com/xhd2015/less-flags`
   - `types` — supported target types (`*bool`, `*string`, `*int`,
@@ -44,6 +46,7 @@ go-best-practice skill --show
 # reveal a top-level topic
 go-best-practice skill --show kool-create
 go-best-practice skill --show flags-parsing
+go-best-practice skill --show cli-color
 
 # reveal a sub-topic (slash-separated path; both flag orders)
 go-best-practice skill --show flags-parsing/types

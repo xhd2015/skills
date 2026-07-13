@@ -17,6 +17,7 @@ var skillTemplate string
 
 // Nested topic directories (path/TOPIC.md layout).
 //
+//go:embed cli-color
 //go:embed cmd-exec
 //go:embed flags-parsing
 //go:embed kool-create

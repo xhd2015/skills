@@ -17,6 +17,7 @@ func TestListTopics(t *testing.T) {
 		topicSet[tp] = true
 	}
 	expectedTopics := []string{
+		"cli-color",
 		"cmd-exec",
 		"flags-parsing",
 		"flags-parsing/subcommand",
