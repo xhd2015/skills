@@ -10,4 +10,8 @@ type RunOptions struct {
 	Stderr     io.Writer
 	CacheDir   string
 	SkipEnsure bool // test hook: skip npm install
+
+	// Launch controls Chromium startup (default headless vs extension-capable).
+	// Zero value keeps legacy headless chromium.launch behavior.
+	Launch LaunchOptions
 }

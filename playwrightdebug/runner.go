@@ -91,7 +91,7 @@ func RunFile(ctx context.Context, opts RunOptions) error {
 	bootstrapPath := filepath.Join(plan.CacheDir, "bootstrap.cjs")
 	cmd := exec.CommandContext(ctx, "node", append([]string{bootstrapPath, plan.ScriptPath}, plan.ScriptArgs...)...)
 	cmd.Dir = plan.CacheDir
-	cmd.Env = PlaywrightEnv(plan.CacheDir)
+	cmd.Env = opts.Launch.ApplyEnv(PlaywrightEnv(plan.CacheDir))
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {
