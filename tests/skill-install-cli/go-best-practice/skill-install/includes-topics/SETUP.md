@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: real install copies nested skill-cli/TOPIC.md alongside root SKILL.md
+**Feature**: real install copies nested cli/skill-cli/TOPIC.md alongside root SKILL.md
 
 ```
 # non-dry-run install writes skill tree (Shape 3 nested paths)
-user -> go-best-practice skill --install -> .agents/skills/go-best-practice/SKILL.md + skill-cli/TOPIC.md
+user -> go-best-practice skill --install -> .agents/skills/go-best-practice/SKILL.md + cli/skill-cli/TOPIC.md
 ```
 
 ## Preconditions

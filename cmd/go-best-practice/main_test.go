@@ -17,13 +17,15 @@ func TestListTopics(t *testing.T) {
 		topicSet[tp] = true
 	}
 	expectedTopics := []string{
-		"cli-color",
+		"cli",
+		"cli/color",
+		"cli/skill-cli",
+		"cli/streaming",
 		"cmd-exec",
 		"flags-parsing",
 		"flags-parsing/subcommand",
 		"flags-parsing/types",
 		"kool-create",
-		"skill-cli",
 	}
 	for _, expected := range expectedTopics {
 		if !topicSet[expected] {
@@ -46,38 +48,80 @@ func TestReadTopicExistingTopLevel(t *testing.T) {
 }
 
 func TestReadTopicSkillCLI(t *testing.T) {
-	content, ok, err := readTopic("skill-cli")
+	content, ok, err := readTopic("cli/skill-cli")
 	if err != nil {
-		t.Fatalf("readTopic(skill-cli): %v", err)
+		t.Fatalf("readTopic(cli/skill-cli): %v", err)
 	}
 	if !ok {
-		t.Fatal("expected ok for skill-cli")
+		t.Fatal("expected ok for cli/skill-cli")
 	}
 	if !strings.Contains(content, "skill --install") && !strings.Contains(content, "--install") {
-		t.Errorf("unexpected content for skill-cli: %s", content)
+		t.Errorf("unexpected content for cli/skill-cli: %s", content)
 	}
-	if !strings.Contains(content, "go-best-practice/skill-cli") {
-		t.Errorf("skill-cli missing nested frontmatter name: %s", content)
+	if !strings.Contains(content, "go-best-practice/cli/skill-cli") {
+		t.Errorf("cli/skill-cli missing nested frontmatter name: %s", content)
+	}
+}
+
+func TestReadTopicCLIStreaming(t *testing.T) {
+	content, ok, err := readTopic("cli/streaming")
+	if err != nil {
+		t.Fatalf("readTopic(cli/streaming): %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok for cli/streaming")
+	}
+	if !strings.Contains(content, "go-best-practice/cli/streaming") {
+		t.Errorf("cli/streaming missing nested frontmatter name: %s", content)
+	}
+	if !strings.Contains(content, "stream") {
+		t.Errorf("cli/streaming missing stream guidance: %s", content)
+	}
+}
+
+func TestReadTopicCLIColor(t *testing.T) {
+	content, ok, err := readTopic("cli/color")
+	if err != nil {
+		t.Fatalf("readTopic(cli/color): %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok for cli/color")
+	}
+	if !strings.Contains(content, "go-best-practice/cli/color") {
+		t.Errorf("cli/color missing nested frontmatter name: %s", content)
+	}
+}
+
+func TestReadTopicCLIParent(t *testing.T) {
+	content, ok, err := readTopic("cli")
+	if err != nil {
+		t.Fatalf("readTopic(cli): %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok for cli")
+	}
+	if !strings.Contains(content, "go-best-practice/cli") {
+		t.Errorf("cli missing frontmatter name: %s", content)
 	}
 }
 
 func TestHandleSkillCLITopicViaShow(t *testing.T) {
 	output, err := captureStdout(t, func() error {
-		return handle([]string{"skill", "--show", "skill-cli"})
+		return handle([]string{"skill", "--show", "cli/skill-cli"})
 	})
 	if err != nil {
-		t.Fatalf("handle(skill --show skill-cli): %v", err)
+		t.Fatalf("handle(skill --show cli/skill-cli): %v", err)
 	}
 	if !strings.Contains(output, "skill-cli") {
-		t.Errorf("skill-cli output missing expected content: %s", output)
+		t.Errorf("cli/skill-cli output missing expected content: %s", output)
 	}
-	if !strings.Contains(output, "go-best-practice/skill-cli") {
+	if !strings.Contains(output, "go-best-practice/cli/skill-cli") {
 		t.Errorf("missing nested name: %s", output)
 	}
 }
 
 func TestHandleBareTopicPathRejected(t *testing.T) {
-	err := handle([]string{"skill-cli"})
+	err := handle([]string{"cli/skill-cli"})
 	if err == nil {
 		t.Fatal("expected error for bare topic path")
 	}
@@ -164,6 +208,9 @@ func TestPrintTopicIndex(t *testing.T) {
 	if !strings.Contains(output, "kool-create") {
 		t.Errorf("topics output missing kool-create: %s", output)
 	}
+	if !strings.Contains(output, "cli") {
+		t.Errorf("topics output missing cli: %s", output)
+	}
 	if !strings.Contains(output, "skill-cli") {
 		t.Errorf("topics output missing skill-cli: %s", output)
 	}
@@ -201,7 +248,7 @@ func TestCollectTopicFiles(t *testing.T) {
 		if f.Path == "cmd-exec/TOPIC.md" {
 			hasCmdExec = true
 		}
-		if f.Path == "skill-cli/TOPIC.md" {
+		if f.Path == "cli/skill-cli/TOPIC.md" {
 			hasSkillCLI = true
 		}
 		if len(f.Content) == 0 {
@@ -212,7 +259,7 @@ func TestCollectTopicFiles(t *testing.T) {
 		t.Error("missing cmd-exec/TOPIC.md in collected files")
 	}
 	if !hasSkillCLI {
-		t.Error("missing skill-cli/TOPIC.md in collected files")
+		t.Error("missing cli/skill-cli/TOPIC.md in collected files")
 	}
 }
 
@@ -294,8 +341,8 @@ func TestHandleSkillShow(t *testing.T) {
 
 func TestHandleSkillShowNestedBothOrders(t *testing.T) {
 	for _, args := range [][]string{
-		{"skill", "--show", "skill-cli"},
-		{"skill", "skill-cli", "--show"},
+		{"skill", "--show", "cli/skill-cli"},
+		{"skill", "cli/skill-cli", "--show"},
 	} {
 		output, err := captureStdout(t, func() error {
 			return handle(args)
@@ -303,7 +350,7 @@ func TestHandleSkillShowNestedBothOrders(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle(%v): %v", args, err)
 		}
-		if !strings.Contains(output, "go-best-practice/skill-cli") {
+		if !strings.Contains(output, "go-best-practice/cli/skill-cli") {
 			t.Errorf("handle(%v) missing nested name: %s", args, output)
 		}
 	}

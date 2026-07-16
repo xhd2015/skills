@@ -1,10 +1,10 @@
 # Scenario
 
-**Feature**: `skill skill-cli --show` prints the same nested topic
+**Feature**: `skill cli/skill-cli --show` prints the same nested topic
 
 ```
 # path before flag
-user -> go-best-practice skill skill-cli --show -> skill-cli nested body
+user -> go-best-practice skill cli/skill-cli --show -> skill-cli nested body
 ```
 
 ## Steps
@@ -13,7 +13,7 @@ user -> go-best-practice skill skill-cli --show -> skill-cli nested body
 
 ```go
 func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"skill", "skill-cli", "--show"}
+	req.Args = []string{"skill", "cli/skill-cli", "--show"}
 	return nil
 }
 ```

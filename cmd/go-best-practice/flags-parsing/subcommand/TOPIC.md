@@ -266,5 +266,5 @@ Options:
   use `Cut` instead of word dispatch — see `flags-parsing/cut`.
 - To forward a filtered flag set to a child process, use
   `CollectParsedFlags` — see `flags-parsing/collect`.
-- Skill CLIs: see `skill-cli` for per-level help on `skill` /
+- Skill CLIs: see `cli/skill-cli` for per-level help on `skill` /
   `skills` / `--install`.

@@ -1,11 +1,11 @@
 ---
-name: go-best-practice/cli-color
+name: go-best-practice/cli/color
 description: >-
   Terminal ANSI color for CLI output: --color / --no-color, TTY auto,
   and the NO_COLOR environment convention.
 ---
 
-# cli-color — terminal ANSI color for CLIs
+# color — terminal ANSI color for CLIs
 
 When a Go CLI prints human-facing status, summaries, or highlights,
 gate ANSI color with an explicit three-mode policy. Default is **auto**
@@ -241,11 +241,12 @@ only “any escape present”.
 
 ## See also
 
+- `cli/streaming` — stream output as work proceeds
 - `flags-parsing` — bool flags and help text with less-flags
 - [no-color.org](https://no-color.org/) — `NO_COLOR` convention
 
 Reveal with:
 
 ```bash
-go-best-practice skill --show cli-color
+go-best-practice skill --show cli/color
 ```

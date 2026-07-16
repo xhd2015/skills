@@ -4,13 +4,13 @@
 
 ```
 # both flag orders for nested path
-user -> go-best-practice skill --show skill-cli -> nested skill-cli body
-user -> go-best-practice skill skill-cli --show -> same content
+user -> go-best-practice skill --show cli/skill-cli -> nested skill-cli body
+user -> go-best-practice skill cli/skill-cli --show -> same content
 ```
 
 ## Preconditions
 
-- go-best-practice embeds nested skill-cli/TOPIC.md after migration.
+- go-best-practice embeds nested cli/skill-cli/TOPIC.md after migration.
 
 ## Steps
 

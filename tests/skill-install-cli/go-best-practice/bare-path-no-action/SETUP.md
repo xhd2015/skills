@@ -4,16 +4,16 @@
 
 ```
 # missing action flag
-user -> go-best-practice skill skill-cli -> error (no bare path action)
+user -> go-best-practice skill cli/skill-cli -> error (no bare path action)
 ```
 
 ## Steps
 
-1. Set Args `skill skill-cli` without --show/--install.
+1. Set Args `skill cli/skill-cli` without --show/--install.
 
 ```go
 func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"skill", "skill-cli"}
+	req.Args = []string{"skill", "cli/skill-cli"}
 	return nil
 }
 ```

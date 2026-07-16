@@ -2,7 +2,7 @@
 
 - Exit code 0.
 - stdout contains skill-cli topic markers (e.g. `skill-cli` and flag action documentation).
-- stdout frontmatter `name` contains `go-best-practice/skill-cli` when present.
+- stdout frontmatter `name` contains `go-best-practice/cli/skill-cli` when present.
 
 ## Side Effects
 
@@ -33,8 +33,8 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("stdout missing skill-cli marker:\n%s", resp.Stdout)
 	}
 	// Nested frontmatter name convention after Shape 3 migration
-	if !strings.Contains(resp.Stdout, "go-best-practice/skill-cli") {
-		t.Fatalf("stdout missing nested name go-best-practice/skill-cli:\n%s", resp.Stdout)
+	if !strings.Contains(resp.Stdout, "go-best-practice/cli/skill-cli") {
+		t.Fatalf("stdout missing nested name go-best-practice/cli/skill-cli:\n%s", resp.Stdout)
 	}
 }
 ```

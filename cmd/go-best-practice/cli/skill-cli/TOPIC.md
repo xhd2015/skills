@@ -1,5 +1,5 @@
 ---
-name: go-best-practice/skill-cli
+name: go-best-practice/cli/skill-cli
 description: >-
   Skill CLI shapes: single-skill, multi-skill host, topic discovery.
 ---
@@ -573,9 +573,11 @@ skills after install.
 <cli> skill --list
 # e.g.
 #   my-skill
+#   cli
+#   cli/color
+#   cli/skill-cli
 #   flags-parsing
 #   flags-parsing/types
-#   skill-cli
 ```
 
 ### Layout
@@ -584,14 +586,18 @@ skills after install.
 my-skill/
 ├── SKILL.md                          # name: my-skill
 ├── main.go
-├── flags-parsing/
-│   ├── TOPIC.md                      # name: my-skill/flags-parsing
-│   ├── types/
-│   │   └── TOPIC.md                  # name: my-skill/flags-parsing/types
-│   └── subcommand/
-│       └── TOPIC.md                  # name: my-skill/flags-parsing/subcommand
-└── skill-cli/
-    └── TOPIC.md                      # name: my-skill/skill-cli
+├── cli/
+│   ├── TOPIC.md                      # name: my-skill/cli
+│   ├── color/
+│   │   └── TOPIC.md                  # name: my-skill/cli/color
+│   └── skill-cli/
+│       └── TOPIC.md                  # name: my-skill/cli/skill-cli
+└── flags-parsing/
+    ├── TOPIC.md                      # name: my-skill/flags-parsing
+    ├── types/
+    │   └── TOPIC.md                  # name: my-skill/flags-parsing/types
+    └── subcommand/
+        └── TOPIC.md                  # name: my-skill/flags-parsing/subcommand
 ```
 
 After install:
@@ -599,10 +605,12 @@ After install:
 ```text
 .agents/skills/my-skill/
 ├── SKILL.md
+├── cli/TOPIC.md
+├── cli/color/TOPIC.md
+├── cli/skill-cli/TOPIC.md
 ├── flags-parsing/TOPIC.md
 ├── flags-parsing/types/TOPIC.md
-├── flags-parsing/subcommand/TOPIC.md
-└── skill-cli/TOPIC.md
+└── flags-parsing/subcommand/TOPIC.md
 ```
 
 ### Index SKILL.md (required pattern)
@@ -621,16 +629,20 @@ List topics and show **retrieve** examples (domain commands — allowed here):
     This skill is an **index**. Load content with:
 
         my-skill skill --show
+        my-skill skill --show cli
+        my-skill skill --show cli/color
         my-skill skill --show flags-parsing
         my-skill skill --show flags-parsing/types
         my-skill skill flags-parsing/types --show
 
     ## Topics
 
+    - `cli` — CLI UX and skill CLI packaging
+      - `color` — ANSI color policy
+      - `skill-cli` — skill CLI shapes
     - `flags-parsing` — CLI flag parsing
       - `types` — supported target types
       - `subcommand` — dispatcher patterns
-    - `skill-cli` — skill CLI shapes
 
 ### Sub-topic TOPIC.md example
 
@@ -666,8 +678,8 @@ var skillContent string
 
 // Embed every top-level skill directory (add more as you add topics).
 //
+//go:embed cli
 //go:embed flags-parsing
-//go:embed skill-cli
 var skillTreeFS embed.FS
 
 const skillName = "my-skill"
@@ -873,5 +885,13 @@ Intermediate directories that have children still ship their own `TOPIC.md` so
 
 ## See also
 
+- `cli/color` — terminal ANSI color policy for skill CLIs
+- `cli/streaming` — stream CLI output as work proceeds
 - `flags-parsing/subcommand` — sub-command dispatch + **every level needs `--help`**
 - `flags-parsing` — less-flags `Help(...)` options
+
+Reveal with:
+
+```bash
+go-best-practice skill --show cli/skill-cli
+```

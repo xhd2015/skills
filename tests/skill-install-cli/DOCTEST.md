@@ -16,7 +16,7 @@ Participants:
   classifies `--show` / `--install` / `--list` and remaining path/name/install flags.
 - Install resolves target directories (local `.agents/skills/<name>`, global
   `~/.agents/skills/<name>`, or explicit `<dir>`) and copies SKILL.md plus any
-  nested extra files (e.g. `skill-cli/TOPIC.md` for go-best-practice Shape 3).
+  nested extra files (e.g. `cli/skill-cli/TOPIC.md` for go-best-practice Shape 3).
 - Dry-run mode prints `[dry-run]` lines to stdout without writing files.
 - Legacy word forms (`skill show`, `skill install`) and bare paths under `skill`
   without an action flag are rejected.
@@ -29,7 +29,7 @@ skill-install-cli/
 │   ├── skill-install/
 │   │   ├── dry-run-default/
 │   │   ├── global-dry-run/
-│   │   └── includes-topics/          # nested skill-cli/TOPIC.md (not topics/*.md)
+│   │   └── includes-topics/          # nested cli/skill-cli/TOPIC.md (not topics/*.md)
 │   ├── skill-show-still-works/
 │   ├── skill-show-nested/
 │   │   ├── flag-before-path/
@@ -51,11 +51,11 @@ skill-install-cli/
 |------|-------------|
 | `go-best-practice/skill-install/dry-run-default` | `skill --install --dry-run` mentions `.agents/skills/go-best-practice` |
 | `go-best-practice/skill-install/global-dry-run` | `skill --install --global --dry-run` resolves under `HOME` |
-| `go-best-practice/skill-install/includes-topics` | Real install copies `skill-cli/TOPIC.md` with SKILL.md |
+| `go-best-practice/skill-install/includes-topics` | Real install copies `cli/skill-cli/TOPIC.md` with SKILL.md |
 | `go-best-practice/skill-show-still-works` | `skill --show` still prints skill name (regression) |
-| `go-best-practice/skill-show-nested/flag-before-path` | `skill --show skill-cli` prints nested topic; name has `go-best-practice/skill-cli` |
-| `go-best-practice/skill-show-nested/path-before-flag` | `skill skill-cli --show` same nested content |
-| `go-best-practice/bare-path-no-action` | `skill skill-cli` without action → error |
+| `go-best-practice/skill-show-nested/flag-before-path` | `skill --show cli/skill-cli` prints nested topic; name has `go-best-practice/cli/skill-cli` |
+| `go-best-practice/skill-show-nested/path-before-flag` | `skill cli/skill-cli --show` same nested content |
+| `go-best-practice/bare-path-no-action` | `skill cli/skill-cli` without action → error |
 | `go-best-practice/legacy-skill-show` | legacy `skill show` → error |
 | `go-best-practice/top-level-install-alias` | Top-level `install --dry-run` matches `skill --install --dry-run` |
 | `go-best-practice/unknown-subcommand` | `skill` alone (no action flags) errors with expected action hints |

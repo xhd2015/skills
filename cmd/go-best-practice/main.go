@@ -17,11 +17,10 @@ var skillTemplate string
 
 // Nested topic directories (path/TOPIC.md layout).
 //
-//go:embed cli-color
+//go:embed cli
 //go:embed cmd-exec
 //go:embed flags-parsing
 //go:embed kool-create
-//go:embed skill-cli
 var skillTreeFS embed.FS
 
 const skillName = "go-best-practice"

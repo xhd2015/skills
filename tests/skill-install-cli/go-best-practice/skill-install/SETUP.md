@@ -6,7 +6,7 @@
 # dry-run previews install without writing files
 user -> go-best-practice skill --install --dry-run -> [dry-run] stdout
 
-# real install writes SKILL.md and nested skill-cli/TOPIC.md
+# real install writes SKILL.md and nested cli/skill-cli/TOPIC.md
 user -> go-best-practice skill --install -> .agents/skills/go-best-practice/
 ```
 
