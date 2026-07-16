@@ -32,7 +32,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	}
 	skillDir := absSkillDir(t, resp.WorkDir, "example-skill")
 	assert.Output(t, resp.Stdout, fmt.Sprintf(`---
-version: 2
+version: 3
 ---
 Skill is up to date: %s
 `, skillDir))

@@ -35,7 +35,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	skillDir := absSkillDir(t, resp.WorkDir, "example-skill")
 	orphan := filepath.Join(skillDir, "orphan.txt")
 	assert.Output(t, resp.Stdout, fmt.Sprintf(`---
-version: 2
+version: 3
 ---
 Update skill at %s
   delete: %s
