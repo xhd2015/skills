@@ -25,6 +25,7 @@ func TestListTopics(t *testing.T) {
 		"flags-parsing",
 		"flags-parsing/subcommand",
 		"flags-parsing/types",
+		"go-embed-assets",
 		"kool-create",
 	}
 	for _, expected := range expectedTopics {
@@ -44,6 +45,25 @@ func TestReadTopicExistingTopLevel(t *testing.T) {
 	}
 	if !strings.Contains(content, "kool create") {
 		t.Errorf("unexpected content for kool-create: %s", content)
+	}
+}
+
+func TestReadTopicGoEmbedAssets(t *testing.T) {
+	content, ok, err := readTopic("go-embed-assets")
+	if err != nil {
+		t.Fatalf("readTopic(go-embed-assets): %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok for go-embed-assets")
+	}
+	if !strings.Contains(content, "go-best-practice/go-embed-assets") {
+		t.Errorf("go-embed-assets missing nested frontmatter name: %s", content)
+	}
+	if !strings.Contains(content, "placeholder") {
+		t.Errorf("go-embed-assets missing placeholder guidance: %s", content)
+	}
+	if !strings.Contains(content, "hydrate") {
+		t.Errorf("go-embed-assets missing hydrate guidance: %s", content)
 	}
 }
 

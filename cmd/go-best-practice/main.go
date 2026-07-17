@@ -20,6 +20,7 @@ var skillTemplate string
 //go:embed cli
 //go:embed cmd-exec
 //go:embed flags-parsing
+//go:embed go-embed-assets
 //go:embed kool-create
 var skillTreeFS embed.FS
 

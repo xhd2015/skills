@@ -37,6 +37,9 @@ tree; address a sub-topic with a slash-separated path, e.g.
   - `subcommand` — sub-command dispatcher patterns (with `StopOnFirstArg` and no-toplevel-flags variants)
   - `cut` — cut flags: consume all remaining tokens after a marker
   - `collect` — `CollectParsedFlags` / `Flags.Reconstruct` / `Remove`
+- `go-embed-assets` — ship generated UI/extension assets with
+  `//go:embed`: placeholders so bare `go install` compiles, fat local
+  bundle, and hydrate from version-pinned GitHub release archives
 
 ## Usage
 
@@ -52,6 +55,7 @@ go-best-practice skill --show
 go-best-practice skill --show kool-create
 go-best-practice skill --show flags-parsing
 go-best-practice skill --show cli
+go-best-practice skill --show go-embed-assets
 
 # reveal a sub-topic (slash-separated path; both flag orders)
 go-best-practice skill --show cli/color
