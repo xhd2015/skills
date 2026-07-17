@@ -35,10 +35,10 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	skillDir := absSkillDir(t, resp.WorkDir, "example-skill")
 	orphan := filepath.Join(skillDir, "orphan.txt")
 	assert.Output(t, resp.Stdout, fmt.Sprintf(`---
-version: 2
+version: 3
 ---
-[dry-run] Update skill at %s
-[dry-run]   delete: %s
+\[dry-run\] Update skill at %s
+\[dry-run\]   delete: %s
 `, skillDir, orphan))
 	if strings.Contains(resp.Stdout, "Skill is up to date") {
 		t.Fatalf("orphan dry-run must not be up to date:\n%s", resp.Stdout)

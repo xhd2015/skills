@@ -2,17 +2,17 @@
 
 ```text
 ---
-version: 2
+version: 3
 ---
 Auth Status
 ───────────
 gh CLI:        available
-GitHub host:   github.com
+GitHub host:   github\.com
 Logged in as:  ghuser
 Token scopes:  repo
-GITHUB_TOKEN:  set (gho_****)
+GITHUB_TOKEN:  set \(gho_\*\*\*\*\)
 API base URL:  __API_BASE_URL__
-API access:    authenticated (via GITHUB_TOKEN) as testuser
+API access:    authenticated \(via GITHUB_TOKEN\) as testuser
 
 Rate Limit
 ──────────
@@ -54,18 +54,18 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	}
 
 	assert.Output(t, resp.Stdout, `---
-version: 2
+version: 3
 __API_BASE_URL__: type=string, example=http://127.0.0.1:54321, mock API base URL
 ---
 Auth Status
 ───────────
 gh CLI:        available
-GitHub host:   github.com
+GitHub host:   github\.com
 Logged in as:  ghuser
 Token scopes:  repo
-GITHUB_TOKEN:  set (gho_****)
+GITHUB_TOKEN:  set \(gho_\*\*\*\*\)
 API base URL:  __API_BASE_URL__
-API access:    authenticated (via GITHUB_TOKEN) as testuser
+API access:    authenticated \(via GITHUB_TOKEN\) as testuser
 
 Rate Limit
 ──────────

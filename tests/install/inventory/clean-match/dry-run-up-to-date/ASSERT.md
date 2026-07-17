@@ -32,9 +32,9 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	}
 	skillDir := absSkillDir(t, resp.WorkDir, "example-skill")
 	assert.Output(t, resp.Stdout, fmt.Sprintf(`---
-version: 2
+version: 3
 ---
-[dry-run] Skill is up to date: %s
+\[dry-run\] Skill is up to date: %s
 `, skillDir))
 	for _, needle := range []string{"create:", "update:", "delete:"} {
 		if strings.Contains(resp.Stdout, needle) {
