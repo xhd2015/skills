@@ -7,15 +7,13 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: golang:1.25.0
-    env:
-      GOFLAGS: -buildvcs=false
     steps:
       - uses: actions/checkout@v4
-      - name: Configure git for container checkout
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Configure git for doctests
         run: |
-          git config --global --add safe.directory '*'
           git config --global user.email "ci@github-actions.local"
           git config --global user.name "github-actions"
       - name: Install Node.js (playwright-debug doctests)
@@ -24,10 +22,9 @@ jobs:
           node-version: "20"
       - name: Install Playwright Chromium system libraries
         run: |
-          # golang container lacks shared libs required by chrome-headless-shell
-          # (e.g. libglib-2.0.so.0). Install a minimal set so npm playwright can run.
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          # chrome-headless-shell needs shared libs (e.g. libglib-2.0.so.0).
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             ca-certificates \
             libglib2.0-0 \
             libnss3 \
@@ -51,7 +48,7 @@ jobs:
             libxcb1 \
             libxext6 \
             fonts-liberation
-          rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /var/lib/apt/lists/*
       - name: Go test
         run: go test -v ./...
 
