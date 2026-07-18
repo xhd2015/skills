@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -97,6 +98,9 @@ func TestHandleRunMissingScript(t *testing.T) {
 }
 
 func TestHandleRunHelpInArgs(t *testing.T) {
+	if _, err := exec.LookPath("npm"); err != nil {
+		t.Skip("npm not available; playwright-debug run help path needs npm")
+	}
 	output, err := captureStdout(t, func() error {
 		return handle([]string{"--help", "console.log(1)"})
 	})

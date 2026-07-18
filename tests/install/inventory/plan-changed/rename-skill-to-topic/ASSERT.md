@@ -39,7 +39,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	oldNested := filepath.Join(skillDir, "a", "SKILL.md")
 	newNested := filepath.Join(skillDir, "a", "TOPIC.md")
 	assert.Output(t, resp.Stdout, fmt.Sprintf(`---
-version: 2
+version: 3
 ---
 Update skill at %s
   create: %s

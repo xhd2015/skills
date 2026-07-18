@@ -1,0 +1,62 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Configure git for doctests
+        run: |
+          git config --global user.email "ci@github-actions.local"
+          git config --global user.name "github-actions"
+      - name: Install Node.js (playwright-debug doctests)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Playwright Chromium system libraries
+        run: |
+          # chrome-headless-shell needs shared libs (e.g. libglib-2.0.so.0).
+          sudo apt-get update
+          # Ubuntu 24.04 (noble): some libs use t64 package names (e.g. libasound2t64).
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates \
+            libglib2.0-0t64 \
+            libnss3 \
+            libnspr4 \
+            libatk1.0-0t64 \
+            libatk-bridge2.0-0t64 \
+            libcups2t64 \
+            libdrm2 \
+            libdbus-1-3 \
+            libxkbcommon0 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxfixes3 \
+            libxrandr2 \
+            libgbm1 \
+            libasound2t64 \
+            libpango-1.0-0 \
+            libcairo2 \
+            libx11-6 \
+            libx11-xcb1 \
+            libxcb1 \
+            libxext6 \
+            fonts-liberation
+          sudo rm -rf /var/lib/apt/lists/*
+      - name: Go test
+        run: go test -v ./...
+
+      - name: Install doctest
+        run: |
+          if ! command -v doctest >/dev/null 2>&1; then
+            go install github.com/xhd2015/doctest/cmd/doctest@latest
+          fi
+      - name: Doctest
+        run: doctest test -v --label-all ./...

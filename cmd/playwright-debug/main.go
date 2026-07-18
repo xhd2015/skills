@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -182,6 +183,18 @@ func handleRunEval(script string, scriptArgs []string, launch playwrightdebug.La
 		return err
 	}
 
+	// Inject trailing script args into process.argv so user scripts that use
+	// process.argv.slice(3) see them even when the -e wrapper is multi-line
+	// (some Node builds / arg packing edge cases drop post -e args).
+	// Marshal nil as [] so the JS for-of never sees null.
+	if scriptArgs == nil {
+		scriptArgs = []string{}
+	}
+	argsJSON, err := json.Marshal(scriptArgs)
+	if err != nil {
+		return fmt.Errorf("marshal script args: %w", err)
+	}
+
 	// Shared launch helper is embedded in bootstrap; for eval, inline a compact
 	// duplicate that reads the same env keys (keep in sync with bootstrap.cjs).
 	wrapper := fmt.Sprintf(`
@@ -189,6 +202,11 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+
+// Ensure process.argv matches: [node, -e, <wrapper>, ...scriptArgs]
+const __pwDebugScriptArgs = %s;
+process.argv.length = 3;
+for (const a of __pwDebugScriptArgs) process.argv.push(a);
 
 function envFlag(name, fallback) {
   const v = process.env[name];
@@ -276,7 +294,7 @@ async function launchBrowser() {
     await launched.close();
   }
 })();
-`, script)
+`, string(argsJSON), script)
 
 	cmd := exec.Command("node", append([]string{"-e", wrapper}, scriptArgs...)...)
 	cmd.Dir = dir
