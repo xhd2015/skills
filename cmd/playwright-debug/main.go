@@ -186,6 +186,10 @@ func handleRunEval(script string, scriptArgs []string, launch playwrightdebug.La
 	// Inject trailing script args into process.argv so user scripts that use
 	// process.argv.slice(3) see them even when the -e wrapper is multi-line
 	// (some Node builds / arg packing edge cases drop post -e args).
+	// Marshal nil as [] so the JS for-of never sees null.
+	if scriptArgs == nil {
+		scriptArgs = []string{}
+	}
 	argsJSON, err := json.Marshal(scriptArgs)
 	if err != nil {
 		return fmt.Errorf("marshal script args: %w", err)
