@@ -30,6 +30,9 @@ tree; address a sub-topic with a slash-separated path, e.g.
     NDJSON vs full JSON)
   - `skill-cli` — skill CLI shapes: single-skill, multi-skill host,
     topic discovery
+  - `inline-tui-mouse` — mouse hit-testing for inline (non-alt-screen)
+    TUIs: CSI 6n origin on one stdin path, dual-origin fallback,
+    anti-patterns (sleep probes, parallel `/dev/tty` reads)
 - `flags-parsing` — CLI flag parsing with
   `github.com/xhd2015/less-flags`
   - `types` — supported target types (`*bool`, `*string`, `*int`,
@@ -61,6 +64,7 @@ go-best-practice skill --show go-embed-assets
 go-best-practice skill --show cli/color
 go-best-practice skill --show cli/streaming
 go-best-practice skill --show cli/skill-cli
+go-best-practice skill --show cli/inline-tui-mouse
 go-best-practice skill --show flags-parsing/types
 go-best-practice skill flags-parsing/subcommand --show
 go-best-practice skill --show flags-parsing/cut

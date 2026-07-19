@@ -19,6 +19,7 @@ func TestListTopics(t *testing.T) {
 	expectedTopics := []string{
 		"cli",
 		"cli/color",
+		"cli/inline-tui-mouse",
 		"cli/skill-cli",
 		"cli/streaming",
 		"cmd-exec",
