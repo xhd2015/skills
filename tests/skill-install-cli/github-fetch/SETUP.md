@@ -25,8 +25,8 @@ user -> github-fetch install -> unknown command error
 - Unlike `go-best-practice`, `github-fetch` has no top-level `install` alias.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	bin, err := buildGithubFetchOnce(t)
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	bin, err := buildGithubFetchOnce(t, d)
 	if err != nil {
 		return err
 	}

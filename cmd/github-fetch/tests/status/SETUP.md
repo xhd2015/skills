@@ -13,8 +13,8 @@ GITHUB_TOKEN env -> auth resolver (priority over gh)
 
 ## Preconditions
 
-- `DOCTEST_ROOT` is `cmd/github-fetch/tests` (parent of this test tree).
-- `findModuleRoot()` walks upward from `DOCTEST_ROOT` to locate the module `go.mod`.
+- `d.DOCTEST_ROOT` is `cmd/github-fetch/tests` (parent of this test tree).
+- `findModuleRoot()` walks upward from `d.DOCTEST_ROOT` to locate the module `go.mod`.
 - Tests use a mock HTTP server for `GET /user` and `GET /rate_limit`; no live GitHub calls.
 - Fake `gh` scripts are prepended to `PATH` when `req.GhMode` is not `absent`.
 
@@ -43,10 +43,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func findModuleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func findModuleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
