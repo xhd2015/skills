@@ -12,8 +12,8 @@ user -> playwright-debug CLI (run <fixture.js>) -> bootstrap injects page -> nes
 
 ## Preconditions
 
-- Module root is two levels above `DOCTEST_ROOT` (`go.mod` at `github.com/xhd2015/skills`).
-- Shared fixtures live in `DOCTEST_ROOT/testdata/`.
+- Module root is two levels above `d.DOCTEST_ROOT` (`go.mod` at `github.com/xhd2015/skills`).
+- Shared fixtures live in `d.DOCTEST_ROOT/testdata/`.
 - The `playwright-debug` binary is built once per `doctest test` session into a
   temp cache keyed by `DOCTEST_SESSION_ID`.
 - All leaves are labeled `slow` — they launch Chromium via playwright cache.
@@ -32,88 +32,78 @@ user -> playwright-debug CLI (run <fixture.js>) -> bootstrap injects page -> nes
 
 ```go
 import (
+	"sync"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func moduleRoot() (string, error) {
-	dir := DOCTEST_ROOT
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", fmt.Errorf("cannot find go.mod from %s", DOCTEST_ROOT)
-		}
-		dir = parent
-	}
-}
-
-func sessionCacheDir() string {
-	return filepath.Join(os.TempDir(), "playwright-debug-node-path-page-"+DOCTEST_SESSION_ID)
-}
-
-func withFileLock(t *testing.T, lockPath string, fn func() error) error {
+func moduleRoot(t *testing.T, d *session.Doctest) string {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
+	root, err := filepath.Abs(filepath.Join(d.DOCTEST_ROOT, "..", ".."))
 	if err != nil {
-		return err
+		t.Fatalf("module root: %v", err)
 	}
-	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		return err
+	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
+		t.Fatalf("module root missing go.mod at %s: %v", root, err)
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-	return fn()
+	return root
 }
 
-func buildPlaywrightDebugOnce(t *testing.T) (string, error) {
-	t.Helper()
-	cacheDir := sessionCacheDir()
-	bin := filepath.Join(cacheDir, "playwright-debug")
-	ready := filepath.Join(cacheDir, "binaries.ready")
-	lock := filepath.Join(cacheDir, "build.lock")
 
-	err := withFileLock(t, lock, func() error {
-		if _, err := os.Stat(ready); err == nil {
-			if _, err := os.Stat(bin); err == nil {
-				return nil
-			}
-		}
-		root, err := moduleRoot()
-		if err != nil {
-			return err
-		}
-		if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-			return err
-		}
-		cmd := exec.Command("go", "build", "-o", bin, "./cmd/playwright-debug")
-		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("build playwright-debug: %w\n%s", err, out)
-		}
-		if err := os.Chmod(bin, 0o755); err != nil {
-			return err
-		}
-		return os.WriteFile(ready, []byte("ok"), 0o644)
-	})
-	if err != nil {
+
+
+
+// Process-local CLI binary cache (one-process; in-memory mutex, not session flock).
+var (
+	cliBinMu    sync.Mutex
+	cliBinPaths = map[string]string{}
+	cliBinErrs  = map[string]error{}
+)
+
+func buildCLIBinaryOnce(t *testing.T, d *session.Doctest, name, pkg string) (string, error) {
+	t.Helper()
+	cliBinMu.Lock()
+	defer cliBinMu.Unlock()
+	if p, ok := cliBinPaths[name]; ok {
+		return p, cliBinErrs[name]
+	}
+	if err, ok := cliBinErrs[name]; ok && err != nil {
 		return "", err
 	}
+	root := moduleRoot(t, d)
+	dir, err := os.MkdirTemp("", "skills-cli-"+name+"-")
+	if err != nil {
+		cliBinErrs[name] = err
+		return "", err
+	}
+	bin := filepath.Join(dir, name)
+	cmd := exec.Command("go", "build", "-o", bin, pkg)
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		e := fmt.Errorf("build %s: %w\n%s", name, err, out)
+		cliBinErrs[name] = e
+		return "", e
+	}
+	if err := os.Chmod(bin, 0o755); err != nil {
+		cliBinErrs[name] = err
+		return "", err
+	}
+	cliBinPaths[name] = bin
 	return bin, nil
 }
 
-func fixturePath(parts ...string) string {
-	return filepath.Join(append([]string{DOCTEST_ROOT, "testdata"}, parts...)...)
+func buildPlaywrightDebugOnce(t *testing.T, d *session.Doctest) (string, error) {
+	return buildCLIBinaryOnce(t, d, "playwright-debug", "./cmd/playwright-debug")
+}
+
+func fixturePath(d *session.Doctest, parts ...string) string {
+	return filepath.Join(append([]string{d.DOCTEST_ROOT, "testdata"}, parts...)...)
 }
 
 func Setup(t *testing.T, req *Request) error {

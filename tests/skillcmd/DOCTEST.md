@@ -64,7 +64,7 @@ skillcmd/
 │   ├── reject-dotdot
 │   ├── install-extra-files
 │   └── list-topics
-├── registry/                      # multi-skill host
+├── skill-registry/                      # multi-skill host
 │   ├── list-skills
 │   ├── show-by-name/
 │   │   ├── flag-before-name
@@ -101,12 +101,12 @@ skillcmd/
 | `single-tree/reject-dotdot` | `--show ../x` errors on invalid segment |
 | `single-tree/install-extra-files` | install writes `skill-cli/TOPIC.md` (not nested SKILL.md / topics/*) |
 | `single-tree/list-topics` | `--list` lists skill name + topics from `**/TOPIC.md` |
-| `registry/list-skills` | `--list` lists registered names (+ description) |
-| `registry/show-by-name/flag-before-name` | `--show foo` prints foo content |
-| `registry/show-by-name/name-before-flag` | `foo --show` prints same content |
-| `registry/install-named` | `--install foo --dry-run` targets foo skill dir |
-| `registry/update-many/skip-missing` | not installed → `skill not installed: <name>` |
-| `registry/update-many/updates-installed` | existing SKILL.md refreshed on update |
+| `skill-registry/list-skills` | `--list` lists registered names (+ description) |
+| `skill-registry/show-by-name/flag-before-name` | `--show foo` prints foo content |
+| `skill-registry/show-by-name/name-before-flag` | `foo --show` prints same content |
+| `skill-registry/install-named` | `--install foo --dry-run` targets foo skill dir |
+| `skill-registry/update-many/skip-missing` | not installed → `skill not installed: <name>` |
+| `skill-registry/update-many/updates-installed` | existing SKILL.md refreshed on update |
 | `file-header/get-header` | GetHeader returns inner YAML without delimiters |
 | `file-header/format-header` | FormatHeaderWithDelimiters wraps with `---` |
 | `install-compat/fresh-default` | HandleInstall default dir succeeds under skillcmd |

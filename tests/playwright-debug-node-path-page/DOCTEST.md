@@ -50,6 +50,7 @@ doctest test -v --label slow ./tests/playwright-debug-node-path-page
 
 ```go
 import (
+	"github.com/xhd2015/doctest/session"
 	"bytes"
 	"fmt"
 	"os"
@@ -67,8 +68,8 @@ type Response struct {
 	ExitCode int
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
-	bin, err := buildPlaywrightDebugOnce(t)
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	bin, err := buildPlaywrightDebugOnce(t, d)
 	if err != nil {
 		return nil, err
 	}

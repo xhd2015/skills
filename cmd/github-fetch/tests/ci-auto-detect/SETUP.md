@@ -1,6 +1,6 @@
 ## Preconditions
-- `DOCTEST_ROOT` is `cmd/github-fetch/tests` (the parent of this test tree).
-- `findModuleRoot()` walks upward from `DOCTEST_ROOT` to locate the `github.com/xhd2015/skills` module `go.mod`.
+- `d.DOCTEST_ROOT` is `cmd/github-fetch/tests` (the parent of this test tree).
+- `findModuleRoot()` walks upward from `d.DOCTEST_ROOT` to locate the `github.com/xhd2015/skills` module `go.mod`.
 - A mock GitHub API server replaces the real GitHub API for deterministic tests.
 
 ## Steps
@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/xhd2015/skills/cmd/github-fetch/github-mock"
+	"github.com/xhd2015/doctest/session"
 )
 
 type MockWorkflowRun struct {
@@ -64,8 +65,8 @@ type Response struct {
 	Stderr   string
 }
 
-func findModuleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func findModuleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil

@@ -22,8 +22,8 @@ user -> playwright-debug skill --install --global --dry-run -> HOME/.agents/skil
 - Parity check that global dry-run path resolution matches other repo CLIs.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	bin, err := buildPlaywrightDebugOnce(t)
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	bin, err := buildPlaywrightDebugOnce(t, d)
 	if err != nil {
 		return err
 	}
