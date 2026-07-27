@@ -1,19 +1,18 @@
 ---
 name: go-best-practice
 description: >-
-  Index of Go best-practice recipes (project scaffolding, CLI flag
-  parsing, and more). Use when the user wants to bootstrap a new
-  project or parse CLI flags in a Go program. Load a sub-topic with:
-  go-best-practice skill --show <topic-path>
+  Index of Go best-practice recipes (kool create, external commands,
+  CLI UX, less-flags, go:embed assets). Use when scaffolding a Go
+  project or choosing a CLI, flag, dry-run, or embed pattern. Load a
+  topic: go-best-practice skill --show <topic-path>
 ---
 
 # Go Best Practice Skill
 
-This skill is an **index**. Load a detailed recipe with
+This skill is an **index**. Load a recipe with
 `go-best-practice skill --show <topic>` (or
-`go-best-practice skill <topic> --show`). Topics are organized as a
-tree; address a sub-topic with a slash-separated path, e.g.
-`flags-parsing/types` or `cli/color`.
+`go-best-practice skill <topic> --show`). Nested topics use a
+slash-separated path (e.g. `flags-parsing/types`, `cli/dry-run`).
 
 ## Topics
 
@@ -28,6 +27,8 @@ tree; address a sub-topic with a slash-separated path, e.g.
   - `streaming` — stream CLI output as work proceeds; avoid
     buffering all output until the end (when to buffer, flush,
     NDJSON vs full JSON)
+  - `dry-run` — one pipeline with side-effect gates; avoid a
+    separate dry-run function that duplicates logic
   - `skill-cli` — skill CLI shapes: single-skill, multi-skill host,
     topic discovery
   - `inline-tui-mouse` — mouse hit-testing for inline (non-alt-screen)
@@ -44,29 +45,24 @@ tree; address a sub-topic with a slash-separated path, e.g.
   `//go:embed`: placeholders so bare `go install` compiles, fat local
   bundle, and hydrate from version-pinned GitHub release archives
 
-## Usage
+## Retrieve
 
 ```bash
-# list top-level topics (CLI help index)
-go-best-practice
+# list paths
 go-best-practice topics
+go-best-practice skill --list
 
-# root skill index
+# this index
 go-best-practice skill --show
 
-# reveal a top-level topic
-go-best-practice skill --show kool-create
-go-best-practice skill --show flags-parsing
+# category / nested (slash path; both flag orders)
 go-best-practice skill --show cli
-go-best-practice skill --show go-embed-assets
+go-best-practice skill --show cli/dry-run
+go-best-practice skill flags-parsing/types --show
 
-# reveal a sub-topic (slash-separated path; both flag orders)
-go-best-practice skill --show cli/color
-go-best-practice skill --show cli/streaming
-go-best-practice skill --show cli/skill-cli
-go-best-practice skill --show cli/inline-tui-mouse
-go-best-practice skill --show flags-parsing/types
-go-best-practice skill flags-parsing/subcommand --show
-go-best-practice skill --show flags-parsing/cut
-go-best-practice skill --show flags-parsing/collect
+# YAML frontmatter only
+go-best-practice skill --show --header
 ```
+
+Every path under **Topics** loads the same way; use `skill --list` for a
+flat inventory.
