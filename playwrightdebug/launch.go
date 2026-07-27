@@ -11,7 +11,7 @@ import (
 const (
 	EnvExtensionPaths = "PLAYWRIGHT_DEBUG_EXTENSION_PATHS" // os.PathListSeparator-joined abs paths
 	EnvUserDataDir    = "PLAYWRIGHT_DEBUG_USER_DATA_DIR"
-	EnvHeaded         = "PLAYWRIGHT_DEBUG_HEADED" // "1" or "0"
+	EnvHeaded         = "PLAYWRIGHT_DEBUG_HEADED"      // "1" or "0"
 	EnvLaunchMode     = "PLAYWRIGHT_DEBUG_LAUNCH_MODE" // "default" | "extension"
 )
 

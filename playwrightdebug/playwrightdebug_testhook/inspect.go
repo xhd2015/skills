@@ -8,10 +8,11 @@ import (
 )
 
 type runOptionsInput struct {
-	ScriptPath string   `json:"script_path"`
-	ScriptArgs []string `json:"script_args"`
-	CacheDir   string   `json:"cache_dir"`
-	SkipEnsure bool     `json:"skip_ensure"`
+	ScriptPath        string   `json:"script_path"`
+	ScriptArgs        []string `json:"script_args"`
+	CacheDir          string   `json:"cache_dir"`
+	PlaywrightVersion string   `json:"playwright_version"`
+	SkipEnsure        bool     `json:"skip_ensure"`
 }
 
 // InspectRunPlan records the node argv and cache layout for RunOptions without executing node.
@@ -22,10 +23,11 @@ func InspectRunPlan(optsJSON []byte) ([]byte, error) {
 	}
 
 	opts := playwrightdebug.RunOptions{
-		ScriptPath: input.ScriptPath,
-		ScriptArgs: input.ScriptArgs,
-		CacheDir:   input.CacheDir,
-		SkipEnsure: input.SkipEnsure,
+		ScriptPath:        input.ScriptPath,
+		ScriptArgs:        input.ScriptArgs,
+		CacheDir:          input.CacheDir,
+		PlaywrightVersion: input.PlaywrightVersion,
+		SkipEnsure:        input.SkipEnsure,
 	}
 	plan, err := playwrightdebug.BuildRunPlan(opts)
 	if err != nil {

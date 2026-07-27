@@ -3,12 +3,12 @@ package playwrightdebug
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -17,12 +17,13 @@ var bootstrapScript string
 
 // RunPlanResult describes a planned file-mode invocation without executing node.
 type RunPlanResult struct {
-	ScriptPath       string   `json:"script_path"`
-	ScriptArgs       []string `json:"script_args"`
-	CacheDir         string   `json:"cache_dir"`
-	NodeArgv         []string `json:"node_argv"`
-	BootstrapWritten bool     `json:"bootstrap_written"`
-	Error            string   `json:"error,omitempty"`
+	ScriptPath        string   `json:"script_path"`
+	ScriptArgs        []string `json:"script_args"`
+	CacheDir          string   `json:"cache_dir"`
+	PlaywrightVersion string   `json:"playwright_version,omitempty"`
+	NodeArgv          []string `json:"node_argv"`
+	BootstrapWritten  bool     `json:"bootstrap_written"`
+	Error             string   `json:"error,omitempty"`
 }
 
 // BuildRunPlan validates the script path and records the node argv that RunFile would use.
@@ -37,9 +38,9 @@ func BuildRunPlan(opts RunOptions) (RunPlanResult, error) {
 		return RunPlanResult{Error: err.Error()}, err
 	}
 
-	cacheDir := opts.CacheDir
-	if cacheDir == "" {
-		cacheDir = DefaultCacheDir()
+	cacheDir, err := VersionedCacheDir(opts.CacheDir, opts.PlaywrightVersion)
+	if err != nil {
+		return RunPlanResult{Error: err.Error()}, err
 	}
 
 	if opts.SkipEnsure {
@@ -48,7 +49,7 @@ func BuildRunPlan(opts RunOptions) (RunPlanResult, error) {
 			return RunPlanResult{Error: err.Error()}, err
 		}
 	} else {
-		cacheDir, err = EnsurePlaywright(cacheDir, opts.Stdout, opts.Stderr)
+		cacheDir, err = EnsurePlaywrightVersion(opts.CacheDir, opts.PlaywrightVersion, opts.Stdout, opts.Stderr)
 		if err != nil {
 			return RunPlanResult{Error: err.Error()}, err
 		}
@@ -64,11 +65,12 @@ func BuildRunPlan(opts RunOptions) (RunPlanResult, error) {
 	nodeArgv := append([]string{"bootstrap.cjs", absPath}, scriptArgs...)
 
 	return RunPlanResult{
-		ScriptPath:       absPath,
-		ScriptArgs:       scriptArgs,
-		CacheDir:         cacheDir,
-		NodeArgv:         nodeArgv,
-		BootstrapWritten: true,
+		ScriptPath:        absPath,
+		ScriptArgs:        scriptArgs,
+		CacheDir:          cacheDir,
+		PlaywrightVersion: opts.PlaywrightVersion,
+		NodeArgv:          nodeArgv,
+		BootstrapWritten:  true,
 	}, nil
 }
 
@@ -122,8 +124,17 @@ func (e *ExitError) Unwrap() error {
 
 // EnsurePlaywright initializes the npm package cache and installs playwright when needed.
 func EnsurePlaywright(cacheDir string, stdout, stderr io.Writer) (string, error) {
-	if cacheDir == "" {
-		cacheDir = DefaultCacheDir()
+	return EnsurePlaywrightVersion(cacheDir, "", stdout, stderr)
+}
+
+// EnsurePlaywrightVersion initializes the npm package cache, enforces an
+// explicitly requested package version, and repairs a missing Chromium
+// executable left by an interrupted browser download.
+func EnsurePlaywrightVersion(cacheDir, version string, stdout, stderr io.Writer) (string, error) {
+	var err error
+	cacheDir, err = VersionedCacheDir(cacheDir, version)
+	if err != nil {
+		return "", err
 	}
 	if stdout == nil {
 		stdout = os.Stdout
@@ -132,12 +143,12 @@ func EnsurePlaywright(cacheDir string, stdout, stderr io.Writer) (string, error)
 		stderr = os.Stderr
 	}
 
-	if playwrightInstalled(cacheDir) {
+	if playwrightReady(cacheDir, version) {
 		return cacheDir, nil
 	}
 
 	if err := withEnsureLock(cacheDir, func() error {
-		return ensurePlaywrightLocked(cacheDir, stdout, stderr)
+		return ensurePlaywrightLocked(cacheDir, version, stdout, stderr)
 	}); err != nil {
 		return "", err
 	}
@@ -145,14 +156,47 @@ func EnsurePlaywright(cacheDir string, stdout, stderr io.Writer) (string, error)
 	return cacheDir, nil
 }
 
-func playwrightInstalled(cacheDir string) bool {
-	nodeModules := filepath.Join(cacheDir, "node_modules", "playwright")
-	_, err := os.Stat(nodeModules)
-	return err == nil
+type playwrightPackageJSON struct {
+	Version string `json:"version"`
 }
 
-func ensurePlaywrightLocked(cacheDir string, stdout, stderr io.Writer) error {
-	if playwrightInstalled(cacheDir) {
+func installedPlaywrightVersion(cacheDir string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(cacheDir, "node_modules", "playwright", "package.json"))
+	if err != nil {
+		return "", err
+	}
+	var pkg playwrightPackageJSON
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return "", err
+	}
+	if pkg.Version == "" {
+		return "", fmt.Errorf("playwright package.json has no version")
+	}
+	return pkg.Version, nil
+}
+
+func playwrightPackageMatches(cacheDir, version string) bool {
+	installed, err := installedPlaywrightVersion(cacheDir)
+	if err != nil {
+		return false
+	}
+	return version == "" || installed == version
+}
+
+func chromiumExecutableExists(cacheDir string) bool {
+	const checkScript = `const fs=require("fs");const{chromium}=require("playwright");const p=chromium.executablePath();process.exit(p&&fs.existsSync(p)?0:1)`
+	cmd := exec.Command("node", "-e", checkScript)
+	cmd.Dir = cacheDir
+	cmd.Env = PlaywrightEnv(cacheDir)
+	return cmd.Run() == nil
+}
+
+func playwrightReady(cacheDir, version string) bool {
+	return playwrightPackageMatches(cacheDir, version) && chromiumExecutableExists(cacheDir)
+}
+
+func ensurePlaywrightLocked(cacheDir, version string, stdout, stderr io.Writer) error {
+	if playwrightReady(cacheDir, version) {
 		return nil
 	}
 
@@ -168,30 +212,46 @@ func ensurePlaywrightLocked(cacheDir string, stdout, stderr io.Writer) error {
 		}
 	}
 
-	if playwrightInstalled(cacheDir) {
-		return nil
+	if !playwrightPackageMatches(cacheDir, version) {
+		target := "playwright"
+		if version != "" {
+			target += "@" + version
+		}
+		fmt.Fprintf(stdout, "Installing %s...\n", target)
+		cmd := exec.Command("npm", "install", "--save-exact", target)
+		cmd.Dir = cacheDir
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("npm install %s: %w", target, err)
+		}
 	}
 
-	fmt.Fprintln(stdout, "Installing playwright...")
-	cmd := exec.Command("npm", "install", "playwright")
-	cmd.Dir = cacheDir
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("npm install playwright: %w", err)
+	if !playwrightPackageMatches(cacheDir, version) {
+		installed, err := installedPlaywrightVersion(cacheDir)
+		if err != nil {
+			return fmt.Errorf("verify installed Playwright package: %w", err)
+		}
+		return fmt.Errorf("installed Playwright version %q does not match requested version %q", installed, version)
 	}
 
-	fmt.Fprintln(stdout, "Installing Chromium browser...")
-	npx := "npx"
-	if runtime.GOOS == "windows" {
-		npx = "npx.cmd"
+	if !chromiumExecutableExists(cacheDir) {
+		label := "playwright"
+		if version != "" {
+			label += "@" + version
+		}
+		fmt.Fprintf(stdout, "Installing Chromium browser for %s...\n", label)
+		cmd := exec.Command("npm", "exec", "--", "playwright", "install", "chromium")
+		cmd.Dir = cacheDir
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("playwright install chromium for %s: %w", label, err)
+		}
 	}
-	cmd = exec.Command(npx, "playwright", "install", "chromium")
-	cmd.Dir = cacheDir
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("playwright install chromium: %w", err)
+
+	if !chromiumExecutableExists(cacheDir) {
+		return fmt.Errorf("Playwright Chromium executable is missing after installation")
 	}
 
 	return nil
