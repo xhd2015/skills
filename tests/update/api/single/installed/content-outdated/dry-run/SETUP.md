@@ -3,7 +3,10 @@
 **Feature**: `--dry-run` previews update without writing drifted file back
 
 ```
-mutate SKILL.md -> HandleUpdate --dry-run -> [dry-run] messages, drift remains
+mutate SKILL.md -> HandleUpdate --dry-run
+  -> skill-alpha  would update  (1 update)
+  ->   update  <abs>/SKILL.md
+  -> drift remains
 ```
 
 ## Preconditions
@@ -16,9 +19,16 @@ mutate SKILL.md -> HandleUpdate --dry-run -> [dry-run] messages, drift remains
 2. Pass `--dry-run` to update.
 
 ```go
-import "github.com/xhd2015/skills/install"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
+	"github.com/xhd2015/doctest/session"
+	"github.com/xhd2015/skills/install"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = t
+	_ = d
 	req.SingleOpts = install.InstallOptions{
 		SkillDirName: "skill-alpha",
 		SkillContent: skillAlphaContent,

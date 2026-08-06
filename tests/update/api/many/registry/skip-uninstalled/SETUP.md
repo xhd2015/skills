@@ -1,9 +1,12 @@
 # Scenario
 
-**Feature**: batch update ignores skills that were never installed
+**Feature**: batch update skips skills that were never installed
 
 ```
-pre-install skill-alpha only -> HandleUpdateMany -> stdout only for alpha
+pre-install skill-alpha only -> HandleUpdateMany
+  -> skill-alpha  up to date
+  -> skill-beta  not installed
+  -> summary; no beta dir created
 ```
 
 ## Preconditions
@@ -16,12 +19,18 @@ pre-install skill-alpha only -> HandleUpdateMany -> stdout only for alpha
 2. Run batch update with default target resolution.
 
 ```go
-import "github.com/xhd2015/skills/install"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
-	alpha := install.InstallOptions{SkillDirName: "skill-alpha", SkillContent: skillAlphaContent}
+	"github.com/xhd2015/doctest/session"
+	"github.com/xhd2015/skills/install"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = t
+	_ = d
 	req.PreInstalls = []PreInstall{{
-		Opts: alpha,
+		Opts: install.InstallOptions{SkillDirName: "skill-alpha", SkillContent: skillAlphaContent},
 		Args: nil,
 	}}
 	req.UpdateArgs = nil

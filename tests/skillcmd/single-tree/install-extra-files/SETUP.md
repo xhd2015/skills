@@ -21,7 +21,8 @@ caller -> SingleSkill.Handle(--install)
 2. Do not override ExtraFiles (harness derives from TreeFiles TOPIC.md paths).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.UseWorkDir = true
 	req.Args = []string{"--install"}
 	// ExtraFiles remains nil: buildSingleSkill / SingleSkill collect TOPIC.md only.

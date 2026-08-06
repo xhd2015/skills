@@ -17,7 +17,8 @@ caller -> GetHeader / FormatHeaderWithDelimiters -> YAML text | error
 2. Leaves set Content and FileOp.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Mode = ModeFileHeader
 	return nil
 }

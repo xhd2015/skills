@@ -25,7 +25,8 @@ caller -> SingleSkill.Handle(--install) -> ExtraFiles include skill-cli/TOPIC.md
 - Nested `SKILL.md` is not the discoverable topic filename.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Mode = ModeSingle
 	req.SkillName = demoSkillName
 	req.RootContent = demoRootContent

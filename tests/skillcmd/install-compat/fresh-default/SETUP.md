@@ -15,7 +15,8 @@ caller -> skillcmd.HandleInstall(opts, nil) -> Installed skill to: .../demo-skil
 ```go
 import "github.com/xhd2015/skills/skillcmd"
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.InstallOpts = skillcmd.InstallOptions{
 		SkillDirName: "demo-skill",
 		SkillContent: "# installed via skillcmd\n",

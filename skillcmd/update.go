@@ -3,6 +3,9 @@ package skillcmd
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"sort"
 	"strings"
 
 	"github.com/xhd2015/less-gen/flags"
@@ -78,33 +81,56 @@ func InstallTo(dir string, skillContent string, extraFiles []InstallFile, dryRun
 	return installTo(dir, skillContent, extraFiles, dryRun, noOverride)
 }
 
+// updateSkillResult is the polished per-skill report for update handlers.
+type updateSkillResult struct {
+	name    string
+	status  string // "up to date" | "updated" | "would update" | "not installed"
+	actions []inventoryAction
+}
+
 // HandleUpdate updates one skill at resolved targets that already have SKILL.md.
+// Silent when nothing is installed. Prints polished status + optional file lines.
 func HandleUpdate(opts InstallOptions, args []string) error {
-	tf, dryRun, args, err := parseUpdateFlags(opts, args)
+	return handleUpdate(os.Stdout, opts, args)
+}
+
+func handleUpdate(w io.Writer, opts InstallOptions, args []string) error {
+	tf, dryRun, colorMode, args, err := parseUpdateFlags(opts, args)
 	if err != nil {
 		if errors.Is(err, flags.ErrHelp) {
 			return nil
 		}
 		return err
 	}
+	style := newColorStyle(colorMode)
 	skillDirName := skillDirNameFrom(opts)
 	dirs, err := ResolveTargetDirs(skillDirName, tf, args)
 	if err != nil {
 		return err
 	}
-	for _, dir := range dirs {
-		if !IsInstalled(dir) {
-			continue
-		}
-		if err := InstallTo(dir, opts.SkillContent, opts.ExtraFiles, dryRun, false); err != nil {
-			return err
-		}
+	name := skillDirName
+	if opts.SkillDirName != "" {
+		name = opts.SkillDirName
 	}
+	// Prefer CursorDirName only as skill dir; display uses skillDirName.
+	result, err := runUpdateSkill(name, opts, dirs, dryRun)
+	if err != nil {
+		return err
+	}
+	if result.status == "not installed" {
+		// Single update: silent when nothing installed.
+		return nil
+	}
+	printUpdateSkillResult(w, style, result)
 	return nil
 }
 
-// HandleUpdateMany updates many skills; skips a skill when none of its targets are installed.
+// HandleUpdateMany updates many skills; reports not installed for skills with no targets.
 func HandleUpdateMany(skills []UpdateSkill, args []string) error {
+	return handleUpdateMany(os.Stdout, skills, args)
+}
+
+func handleUpdateMany(w io.Writer, skills []UpdateSkill, args []string) error {
 	if len(skills) == 0 {
 		return nil
 	}
@@ -112,37 +138,150 @@ func HandleUpdateMany(skills []UpdateSkill, args []string) error {
 	if usage == "" {
 		usage = "skills update"
 	}
-	tf, dryRun, args, err := parseUpdateFlags(InstallOptions{Usage: usage}, args)
+	tf, dryRun, colorMode, args, err := parseUpdateFlags(InstallOptions{Usage: usage}, args)
 	if err != nil {
 		if errors.Is(err, flags.ErrHelp) {
 			return nil
 		}
 		return err
 	}
+	style := newColorStyle(colorMode)
+
+	var nUpdated, nWouldUpdate, nUpToDate, nNotInstalled int
 	for _, skill := range skills {
 		skillDirName := skillDirNameFrom(skill.InstallOptions)
 		dirs, err := ResolveTargetDirs(skillDirName, tf, args)
 		if err != nil {
 			return err
 		}
-		var installed []string
-		for _, dir := range dirs {
-			if IsInstalled(dir) {
-				installed = append(installed, dir)
-			}
+		name := updateSkillDisplayName(skill)
+		result, err := runUpdateSkill(name, skill.InstallOptions, dirs, dryRun)
+		if err != nil {
+			return err
 		}
-		if len(installed) == 0 {
-			fmt.Println("skill not installed: " + updateSkillDisplayName(skill))
+		printUpdateSkillResult(w, style, result)
+		switch result.status {
+		case "updated":
+			nUpdated++
+		case "would update":
+			nWouldUpdate++
+		case "up to date":
+			nUpToDate++
+		case "not installed":
+			nNotInstalled++
+		}
+	}
+	fmt.Fprintln(w)
+	summary := formatUpdateSummary(nUpdated, nWouldUpdate, nUpToDate, nNotInstalled, dryRun)
+	fmt.Fprintln(w, style.gray(summary))
+	return nil
+}
+
+// runUpdateSkill plans (and optionally applies) inventory for installed targets only.
+func runUpdateSkill(name string, opts InstallOptions, dirs []string, dryRun bool) (updateSkillResult, error) {
+	var installed []string
+	for _, dir := range dirs {
+		if IsInstalled(dir) {
+			installed = append(installed, dir)
+		}
+	}
+	if len(installed) == 0 {
+		return updateSkillResult{name: name, status: "not installed"}, nil
+	}
+
+	var all []inventoryAction
+	for _, dir := range installed {
+		plan, err := planInventory(dir, opts.SkillContent, opts.ExtraFiles)
+		if err != nil {
+			return updateSkillResult{}, err
+		}
+		if len(plan.actions) == 0 {
 			continue
 		}
-		for _, dir := range installed {
-			if err := InstallTo(dir, skill.SkillContent, skill.ExtraFiles, dryRun, false); err != nil {
-				return err
+		if !dryRun {
+			if err := applyInventoryActions(plan.absDir, plan.actions); err != nil {
+				return updateSkillResult{}, err
 			}
 		}
-		fmt.Println(skillDirName)
+		all = append(all, plan.actions...)
 	}
-	return nil
+
+	if len(all) == 0 {
+		return updateSkillResult{name: name, status: "up to date"}, nil
+	}
+	// Stable create → update → delete across multi-target aggregation.
+	all = sortInventoryActions(all)
+	status := "updated"
+	if dryRun {
+		status = "would update"
+	}
+	return updateSkillResult{name: name, status: status, actions: all}, nil
+}
+
+func sortInventoryActions(actions []inventoryAction) []inventoryAction {
+	opOrder := map[string]int{"create": 0, "update": 1, "delete": 2}
+	out := append([]inventoryAction(nil), actions...)
+	sort.SliceStable(out, func(i, j int) bool {
+		oi, oj := opOrder[out[i].op], opOrder[out[j].op]
+		if oi != oj {
+			return oi < oj
+		}
+		if out[i].relPath != out[j].relPath {
+			return out[i].relPath < out[j].relPath
+		}
+		return out[i].absPath < out[j].absPath
+	})
+	return out
+}
+
+func printUpdateSkillResult(w io.Writer, style colorStyle, r updateSkillResult) {
+	status := style.colorStatus(r.status)
+	if len(r.actions) == 0 {
+		fmt.Fprintf(w, "%s  %s\n", r.name, status)
+		return
+	}
+	counts := formatOpCounts(r.actions)
+	// Counts and parentheses stay plain; only the status token is tinted.
+	fmt.Fprintf(w, "%s  %s  (%s)\n", r.name, status, counts)
+	for _, a := range r.actions {
+		fmt.Fprintf(w, "  %s  %s\n", style.gray(a.op), a.absPath)
+	}
+}
+
+// formatOpCounts builds "1 create, 6 update" (only non-zero ops; create, update, delete order).
+func formatOpCounts(actions []inventoryAction) string {
+	var creates, updates, deletes int
+	for _, a := range actions {
+		switch a.op {
+		case "create":
+			creates++
+		case "update":
+			updates++
+		case "delete":
+			deletes++
+		}
+	}
+	var parts []string
+	if creates > 0 {
+		parts = append(parts, fmt.Sprintf("%d create", creates))
+	}
+	if updates > 0 {
+		parts = append(parts, fmt.Sprintf("%d update", updates))
+	}
+	if deletes > 0 {
+		parts = append(parts, fmt.Sprintf("%d delete", deletes))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// formatUpdateSummary builds the trailing batch count line.
+func formatUpdateSummary(updated, wouldUpdate, upToDate, notInstalled int, dryRun bool) string {
+	if dryRun {
+		return fmt.Sprintf("%d updated · %d would update · %d up to date · %d not installed  [dry-run]",
+			updated, wouldUpdate, upToDate, notInstalled)
+	}
+	return fmt.Sprintf("%d updated · %d up to date · %d not installed",
+		updated, upToDate, notInstalled)
 }
 
 func updateSkillDisplayName(skill UpdateSkill) string {
@@ -152,7 +291,7 @@ func updateSkillDisplayName(skill UpdateSkill) string {
 	return skillDirNameFrom(skill.InstallOptions)
 }
 
-func parseUpdateFlags(opts InstallOptions, args []string) (TargetFlags, bool, []string, error) {
+func parseUpdateFlags(opts InstallOptions, args []string) (TargetFlags, bool, ColorMode, []string, error) {
 	usage := strings.TrimSpace(opts.Usage)
 	if usage == "" {
 		usage = "update"
@@ -160,12 +299,15 @@ func parseUpdateFlags(opts InstallOptions, args []string) (TargetFlags, bool, []
 	skillDirName := skillDirNameFrom(opts)
 	var tf TargetFlags
 	var dryRun bool
+	var colorFlag, noColorFlag bool
 	args, err := flags.Bool("--dry-run", &dryRun).
 		Bool("--cursor", &tf.Cursor).
 		Bool("--codex", &tf.Codex).
 		Bool("--opencode", &tf.Opencode).
 		Bool("--general-agents", &tf.GeneralAgents).
 		Bool("--global", &tf.Global).
+		Bool("--color", &colorFlag).
+		Bool("--no-color", &noColorFlag).
 		Help("-h,--help", fmt.Sprintf(`
 Usage: %s [OPTIONS] [<dir>]
 
@@ -180,13 +322,25 @@ Options:
                Update .agents/skills/%s when installed
   --global     Use ~/.<dir>/... instead of current directory's .<dir>/...
   --dry-run    Show what would change without writing files
+  --color      force ANSI color on (even when stdout is not a TTY)
+  --no-color   force ANSI color off
 
 Multiple --cursor/--codex/--opencode/--general-agents flags can be combined.
 `, usage, skillDirName, skillDirName, skillDirName, skillDirName, skillDirName)).HelpNoExit().Parse(args)
 	if err != nil {
-		return TargetFlags{}, false, nil, err
+		return TargetFlags{}, false, ColorAuto, nil, err
 	}
-	return tf, dryRun, args, nil
+	if colorFlag && noColorFlag {
+		return TargetFlags{}, false, ColorAuto, nil, fmt.Errorf("--color and --no-color cannot be specified together")
+	}
+	mode := ColorAuto
+	if colorFlag {
+		mode = ColorAlways
+	}
+	if noColorFlag {
+		mode = ColorNever
+	}
+	return tf, dryRun, mode, args, nil
 }
 
 func skillDirNameFrom(opts InstallOptions) string {

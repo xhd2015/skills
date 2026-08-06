@@ -17,7 +17,8 @@ caller -> skillcmd.HandleInstall(opts, args) -> .agents/skills/<name>/
 2. Leaf configures InstallOpts and Args.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Mode = ModeInstallCompat
 	req.UseWorkDir = true
 	return nil

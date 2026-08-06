@@ -1,7 +1,17 @@
+## Expected Output
+
+```text
+skill-alpha  up to date
+skill-beta  up to date
+
+0 updated · 2 up to date · 0 not installed
+```
+
 ## Expected
 
-- stdout contains two lines with `Skill is up to date`.
-- stdout references both `skill-alpha` and `skill-beta` install paths.
+- Two column-0 status lines in registry order: `skill-alpha` then `skill-beta`, each `up to date`.
+- Blank line then summary `0 updated · 2 up to date · 0 not installed`.
+- Trailing newline; no leading blank line; no indented file lines; no legacy strings.
 
 ## Side Effects
 
@@ -13,11 +23,15 @@
 
 ```go
 import (
-	"strings"
 	"testing"
+
+	"github.com/xhd2015/doctest/assert"
+	"github.com/xhd2015/doctest/session"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
+	_ = d
+	_ = req
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
@@ -25,15 +39,14 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
 	assertBatchStdoutPolished(t, resp.Stdout)
-	count := strings.Count(resp.Stdout, "Skill is up to date")
-	if count != 2 {
-		t.Fatalf("expected 2 up-to-date lines, got %d:\n%s", count, resp.Stdout)
-	}
-	if !strings.Contains(resp.Stdout, "skill-alpha") {
-		t.Fatalf("stdout missing alpha:\n%s", resp.Stdout)
-	}
-	if !strings.Contains(resp.Stdout, "skill-beta") {
-		t.Fatalf("stdout missing beta:\n%s", resp.Stdout)
-	}
+	assertNoLegacyUpdateStdout(t, resp.Stdout)
+	assert.Output(t, resp.Stdout, `---
+version: 3
+---
+skill-alpha  up to date
+skill-beta  up to date
+
+0 updated · 2 up to date · 0 not installed
+`)
 }
 ```

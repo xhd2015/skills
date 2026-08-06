@@ -22,7 +22,8 @@ caller -> SingleSkill.Handle(--show|--list|--install...) -> stdout / install lay
 - Body marker `# Demo Skill Body` distinguishes full show from header-only.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Mode = ModeSingle
 	req.SkillName = demoSkillName
 	req.RootContent = demoRootContent

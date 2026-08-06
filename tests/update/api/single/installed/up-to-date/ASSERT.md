@@ -1,7 +1,14 @@
+## Expected Output
+
+```text
+skill-alpha  up to date
+```
+
 ## Expected
 
-- stdout contains `Skill is up to date`.
-- stdout does not contain `Update skill at`.
+- stdout is exactly `skill-alpha  up to date` plus trailing newline.
+- No `updated` / file lines / legacy InstallTo strings.
+- `SKILL.md` content remains canonical.
 
 ## Side Effects
 
@@ -14,23 +21,28 @@
 ```go
 import (
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/xhd2015/doctest/assert"
+	"github.com/xhd2015/doctest/session"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
+	_ = d
+	_ = req
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
-	if !strings.Contains(resp.Stdout, "Skill is up to date") {
-		t.Fatalf("stdout missing up-to-date message:\n%s", resp.Stdout)
-	}
-	if strings.Contains(resp.Stdout, "Update skill at") {
-		t.Fatalf("stdout should not report update:\n%s", resp.Stdout)
-	}
+	assertBatchStdoutPolished(t, resp.Stdout)
+	assertNoLegacyUpdateStdout(t, resp.Stdout)
+	assert.Output(t, resp.Stdout, `---
+version: 3
+---
+skill-alpha  up to date
+`)
 	skillPath := filepath.Join(resp.WorkDir, skillMDPath(skillAgentsDir("skill-alpha")))
 	if got := readFile(t, skillPath); got != skillAlphaContent {
 		t.Fatalf("SKILL.md content mismatch:\n%s", got)

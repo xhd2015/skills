@@ -3,7 +3,10 @@
 **Feature**: update restores canonical `SKILL.md` after drift
 
 ```
-HandleInstall -> mutate SKILL.md -> HandleUpdate -> Update skill at + canonical bytes
+HandleInstall -> mutate SKILL.md -> HandleUpdate
+  -> skill-alpha  updated  (1 update)
+  ->   update  <abs>/SKILL.md
+  -> canonical bytes on disk
 ```
 
 ## Preconditions
@@ -17,9 +20,16 @@ HandleInstall -> mutate SKILL.md -> HandleUpdate -> Update skill at + canonical 
 3. Update without flags.
 
 ```go
-import "github.com/xhd2015/skills/install"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
+	"github.com/xhd2015/doctest/session"
+	"github.com/xhd2015/skills/install"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = t
+	_ = d
 	req.SingleOpts = install.InstallOptions{
 		SkillDirName: "skill-alpha",
 		SkillContent: skillAlphaContent,

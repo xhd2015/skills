@@ -15,7 +15,8 @@ caller -> SingleSkill.Handle(--install --dry-run) -> [dry-run] .agents/skills/de
 1. Set Args for this action.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.UseWorkDir = true
 	req.Args = []string{"--install", "--dry-run"}
 	return nil

@@ -18,10 +18,3 @@ HandleUpdate --codex --opencode -> codex updated/skipped, opencode absent
 ## Context
 
 - Uninstalled targets for extra flags must not be created during update.
-
-```go
-func Setup(t *testing.T, req *Request) error {
-	req.UseGlobalHome = false
-	return nil
-}
-```

@@ -1,8 +1,16 @@
+## Expected Output
+
+```text
+skill-alpha  updated  (1 update)
+  update  <abs>/.codex/skills/skill-alpha/SKILL.md
+```
+
 ## Expected
 
-- stdout mentions the codex absolute path (via `Update skill at` or `Skill is up to date` after restore).
-- stdout has exactly one skill status line for this single skill update (one target processed).
+- One polished status line for the single skill (one installed target processed).
+- Indented absolute codex `SKILL.md` path.
 - `.opencode/skills/skill-alpha` does not exist.
+- Codex `SKILL.md` restored to canonical content.
 
 ## Side Effects
 
@@ -17,34 +25,46 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/xhd2015/doctest/assert"
+	"github.com/xhd2015/doctest/session"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
+	_ = d
+	_ = req
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 	if resp.Error != "" {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
-	codexDir := skillCodexDir("skill-alpha")
-	if !strings.Contains(resp.Stdout, "skill-alpha") && !strings.Contains(resp.Stdout, ".codex") {
-		t.Fatalf("stdout should reference codex install, got:\n%s", resp.Stdout)
-	}
-	lines := strings.Split(strings.TrimSpace(resp.Stdout), "\n")
-	statusLines := 0
-	for _, line := range lines {
-		if strings.Contains(line, "Skill is up to date") || strings.Contains(line, "Update skill at") || strings.Contains(line, "[dry-run]") {
-			statusLines++
+	assertBatchStdoutPolished(t, resp.Stdout)
+	assertNoLegacyUpdateStdout(t, resp.Stdout)
+
+	assert.Output(t, resp.Stdout, `---
+version: 3
+__SKILL__: regex=/.+/\.codex/skills/skill-alpha/SKILL\.md
+---
+skill-alpha  updated  \(1 update\)
+  update  __SKILL__
+`)
+
+	for _, line := range strings.Split(resp.Stdout, "\n") {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "update  ") {
+			path := strings.TrimSpace(strings.TrimPrefix(trim, "update  "))
+			if !filepath.IsAbs(path) {
+				t.Fatalf("file path must be absolute: %q", path)
+			}
 		}
 	}
-	if statusLines != 1 {
-		t.Fatalf("expected 1 status line for single installed target, got %d:\n%s", statusLines, resp.Stdout)
-	}
+
 	opencodeDir := filepath.Join(resp.WorkDir, skillOpencodeDir("skill-alpha"))
 	if pathExists(t, opencodeDir) {
 		t.Fatalf("expected %s not to exist", opencodeDir)
 	}
-	codexSkill := filepath.Join(resp.WorkDir, skillMDPath(codexDir))
+	codexSkill := absUnder(resp.WorkDir, skillMDPath(skillCodexDir("skill-alpha")))
 	if got := readFile(t, codexSkill); got != skillAlphaContent {
 		t.Fatalf("codex SKILL.md not restored:\n%s", got)
 	}

@@ -4,7 +4,7 @@
 
 ```
 HandleInstall -> user/tool mutates SKILL.md
-HandleUpdate -> overwrite when content differs
+HandleUpdate -> overwrite when content differs; polished updated status
 ```
 
 ## Preconditions
@@ -21,10 +21,3 @@ HandleUpdate -> overwrite when content differs
 ## Context
 
 - Children differ only by dry-run modifier.
-
-```go
-func Setup(t *testing.T, req *Request) error {
-	req.PostInstallMutate = nil
-	return nil
-}
-```

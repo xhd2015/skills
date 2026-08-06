@@ -12,7 +12,8 @@ caller -> skillcmd.FormatHeaderWithDelimiters(content) -> ---\n...\n---\n
 1. Set FileOp format-header with demo skill content.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.FileOp = FileOpFormatHeader
 	req.Content = demoRootContent
 	return nil

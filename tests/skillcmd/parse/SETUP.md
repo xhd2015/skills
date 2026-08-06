@@ -22,7 +22,8 @@ caller -> skillcmd.ParseSkillArgs(args) -> Action + Header + Rest | error
 - Exactly one of show / install / list is required.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Mode = ModeParse
 	return nil
 }

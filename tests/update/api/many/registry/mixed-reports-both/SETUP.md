@@ -1,9 +1,11 @@
 # Scenario
 
-**Feature**: batch update interleaves installed and not-installed stdout lines
+**Feature**: batch update interleaves installed and not-installed status lines
 
 ```
-pre-install skill-alpha only -> HandleUpdateMany -> up-to-date for alpha, not-installed for beta
+pre-install skill-alpha only -> HandleUpdateMany
+  -> registry order: alpha up to date, then beta not installed
+  -> summary counts both
 ```
 
 ## Preconditions
@@ -16,12 +18,18 @@ pre-install skill-alpha only -> HandleUpdateMany -> up-to-date for alpha, not-in
 2. Run batch update with default target resolution.
 
 ```go
-import "github.com/xhd2015/skills/install"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
-	alpha := install.InstallOptions{SkillDirName: "skill-alpha", SkillContent: skillAlphaContent}
+	"github.com/xhd2015/doctest/session"
+	"github.com/xhd2015/skills/install"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = t
+	_ = d
 	req.PreInstalls = []PreInstall{{
-		Opts: alpha,
+		Opts: install.InstallOptions{SkillDirName: "skill-alpha", SkillContent: skillAlphaContent},
 		Args: nil,
 	}}
 	req.UpdateArgs = nil

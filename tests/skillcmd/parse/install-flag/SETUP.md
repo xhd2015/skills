@@ -15,7 +15,8 @@ caller -> ParseSkillArgs([--install, --global]) -> install + rest --global
 1. Set Args for this case.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--install", "--global"}
 	return nil
 }

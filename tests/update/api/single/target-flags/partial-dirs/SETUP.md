@@ -3,7 +3,9 @@
 **Feature**: partial install across multiple flag targets
 
 ```
-install --codex only -> update --codex --opencode -> only codex processed
+install --codex only -> update --codex --opencode
+  -> only codex processed (updated status + file line)
+  -> opencode still absent
 ```
 
 ## Preconditions
@@ -17,9 +19,16 @@ install --codex only -> update --codex --opencode -> only codex processed
 3. Update with `["--codex", "--opencode"]`.
 
 ```go
-import "github.com/xhd2015/skills/install"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
+	"github.com/xhd2015/doctest/session"
+	"github.com/xhd2015/skills/install"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = t
+	_ = d
 	req.SingleOpts = install.InstallOptions{
 		SkillDirName: "skill-alpha",
 		SkillContent: skillAlphaContent,

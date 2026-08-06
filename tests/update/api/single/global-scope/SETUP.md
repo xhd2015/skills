@@ -1,26 +1,21 @@
 # Scenario
 
-**Feature**: `--global` resolves targets under `$HOME`
+**Feature**: `--global` update uses `$HOME` skill trees
 
 ```
-HandleInstall --global / HandleUpdate --global -> home-relative skill paths
+HandleInstall --global -> ~/.<tool>/skills/<name>
+HandleUpdate --global -> only global tree updated
 ```
 
 ## Preconditions
 
-- Leaves set `req.UseGlobalHome = true`.
+- Leaves set `req.UseGlobalHome` so `HOME` is an isolated temp dir.
 
 ## Steps
 
-1. Use `--global` on install and update flag lists.
+1. Pre-install with `--global`.
+2. Update with `--global`.
 
 ## Context
 
-- Project-local default paths must remain absent when only global install ran.
-
-```go
-func Setup(t *testing.T, req *Request) error {
-	req.UseGlobalHome = true
-	return nil
-}
-```
+- Project-local `.agents/...` under workdir must stay untouched.

@@ -1,19 +1,17 @@
-## Expected
-
-- stdout contains exactly one `Skill is up to date` line referencing `skill-alpha`.
-- stdout contains `skill not installed: skill-beta`.
-- Lines appear in registry CLI-name order: alpha status before beta not-installed.
-- stdout does not contain `No installed skills found`.
-
 ## Expected Output
 
+```text
+skill-alpha  up to date
+skill-beta  not installed
+
+0 updated · 1 up to date · 1 not installed
 ```
-<contains>
-Skill is up to date
-skill-alpha
-skill not installed: skill-beta
-</contains>
-```
+
+## Expected
+
+- Lines appear in registry CLI-name order: alpha status before beta not-installed.
+- Summary reflects one up-to-date and one not-installed.
+- No legacy `Skill is up to date:` / `skill not installed:` forms.
 
 ## Errors
 
@@ -25,9 +23,12 @@ import (
 	"testing"
 
 	"github.com/xhd2015/doctest/assert"
+	"github.com/xhd2015/doctest/session"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
+	_ = d
+	_ = req
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
@@ -35,22 +36,19 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
 	assertBatchStdoutPolished(t, resp.Stdout)
-	assert.Output(t, resp.Stdout, `` +
-`<contains>
-Skill is up to date
-skill-alpha
-skill not installed: skill-beta
-</contains>`)
-	if strings.Count(resp.Stdout, "Skill is up to date") != 1 {
-		t.Fatalf("expected one up-to-date line:\n%s", resp.Stdout)
-	}
-	if strings.Contains(resp.Stdout, "No installed skills found") {
-		t.Fatalf("aggregate scope hint must be removed:\n%s", resp.Stdout)
-	}
-	alphaIdx := strings.Index(resp.Stdout, "skill-alpha")
-	betaIdx := strings.Index(resp.Stdout, "skill not installed: skill-beta")
+	assertNoLegacyUpdateStdout(t, resp.Stdout)
+	assert.Output(t, resp.Stdout, `---
+version: 3
+---
+skill-alpha  up to date
+skill-beta  not installed
+
+0 updated · 1 up to date · 1 not installed
+`)
+	alphaIdx := strings.Index(resp.Stdout, "skill-alpha  up to date")
+	betaIdx := strings.Index(resp.Stdout, "skill-beta  not installed")
 	if alphaIdx < 0 || betaIdx < 0 || alphaIdx > betaIdx {
-		t.Fatalf("expected alpha output before beta not-installed line:\n%s", resp.Stdout)
+		t.Fatalf("expected alpha status before beta not-installed:\n%s", resp.Stdout)
 	}
 }
 ```

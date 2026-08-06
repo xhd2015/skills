@@ -4,7 +4,7 @@
 
 ```
 HandleInstall -> SKILL.md on disk
-HandleUpdate -> InstallTo compares content
+HandleUpdate -> inventory compare + polished status
 ```
 
 ## Preconditions
@@ -21,9 +21,16 @@ HandleUpdate -> InstallTo compares content
 - Splits on whether on-disk content matches embedded skill content after install.
 
 ```go
-import "github.com/xhd2015/skills/install"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
+	"github.com/xhd2015/doctest/session"
+	"github.com/xhd2015/skills/install"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = t
+	_ = d
 	if req.SingleOpts.SkillDirName == "" {
 		req.SingleOpts = install.InstallOptions{
 			SkillDirName: "skill-alpha",

@@ -17,5 +17,7 @@ require (
 	github.com/xhd2015/go-inspect v0.0.49 // indirect
 	github.com/xhd2015/xgo v1.0.49-0.20240916074001-40aa40fc7623 // indirect
 	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
 )

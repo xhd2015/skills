@@ -15,7 +15,8 @@ caller -> SingleSkill.Handle(--show a/b) -> Nested A/B Body from a/b/TOPIC.md
 1. Configure Args for nested show.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--show", "a/b"}
 	return nil
 }

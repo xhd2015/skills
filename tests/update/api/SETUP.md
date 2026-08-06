@@ -4,10 +4,10 @@
 
 ```
 # single skill definition
-test -> HandleUpdate(opts, args) -> per-target InstallTo
+test -> HandleUpdate(opts, args) -> inventory apply on installed targets
 
 # many registry entries share one flag parse
-test -> HandleUpdateMany(skills, args) -> per-skill, per-target InstallTo
+test -> HandleUpdateMany(skills, args) -> per-skill status + trailing summary
 ```
 
 ## Preconditions
@@ -21,10 +21,3 @@ test -> HandleUpdateMany(skills, args) -> per-skill, per-target InstallTo
 ## Context
 
 - API choice is the highest-impact split in this tree.
-
-```go
-func Setup(t *testing.T, req *Request) error {
-	_ = t
-	return nil
-}
-```

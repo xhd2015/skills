@@ -39,7 +39,11 @@ caller -> GetHeader / FormatHeaderWithDelimiters -> YAML text
   (not nested `SKILL.md` / `topics/*.md`).
 
 ```go
-import "testing"
+import (
+	"testing"
+
+	"github.com/xhd2015/doctest/session"
+)
 
 const (
 	demoSkillName = "demo-skill"
@@ -86,7 +90,8 @@ description: bar skill description
 `
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

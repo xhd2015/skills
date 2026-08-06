@@ -15,7 +15,8 @@ caller -> SingleSkill.Handle(--show ../x) -> error
 1. Configure Args with invalid `../x` topic path.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--show", "../x"}
 	return nil
 }

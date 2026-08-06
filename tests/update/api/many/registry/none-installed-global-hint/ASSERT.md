@@ -1,16 +1,16 @@
-## Expected
-
-- stdout contains `skill not installed: skill-alpha` and `skill not installed: skill-beta`.
-- stdout does not contain `No installed skills found`.
-
 ## Expected Output
 
+```text
+skill-alpha  not installed
+skill-beta  not installed
+
+0 updated · 0 up to date · 2 not installed
 ```
-<contains>
-skill not installed: skill-alpha
-skill not installed: skill-beta
-</contains>
-```
+
+## Expected
+
+- Same not-installed shape as local none-installed (no aggregate scope hint).
+- Summary with two not-installed; no legacy `skill not installed:` prefix.
 
 ## Errors
 
@@ -18,13 +18,15 @@ skill not installed: skill-beta
 
 ```go
 import (
-	"strings"
 	"testing"
 
 	"github.com/xhd2015/doctest/assert"
+	"github.com/xhd2015/doctest/session"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
+	_ = d
+	_ = req
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
@@ -32,13 +34,14 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("expected no error, got: %s", resp.Error)
 	}
 	assertBatchStdoutPolished(t, resp.Stdout)
-	assert.Output(t, resp.Stdout, `` +
-`<contains>
-skill not installed: skill-alpha
-skill not installed: skill-beta
-</contains>`)
-	if strings.Contains(resp.Stdout, "No installed skills found") {
-		t.Fatalf("aggregate scope hint must be removed:\n%s", resp.Stdout)
-	}
+	assertNoLegacyUpdateStdout(t, resp.Stdout)
+	assert.Output(t, resp.Stdout, `---
+version: 3
+---
+skill-alpha  not installed
+skill-beta  not installed
+
+0 updated · 0 up to date · 2 not installed
+`)
 }
 ```

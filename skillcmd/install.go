@@ -92,48 +92,70 @@ type inventoryAction struct {
 	content []byte // only for create/update
 }
 
-func installTo(dir string, skillContent string, extraFiles []InstallFile, dryRun bool, noOverride bool) error {
+// inventoryPlan is the computed create/update/delete set for one skill directory.
+type inventoryPlan struct {
+	absDir   string
+	exists   bool
+	nonEmpty bool
+	actions  []inventoryAction
+}
+
+// planInventory compares desired skill content against on-disk files without writing.
+func planInventory(dir string, skillContent string, extraFiles []InstallFile) (*inventoryPlan, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
-		return fmt.Errorf("resolve path: %w", err)
+		return nil, fmt.Errorf("resolve path: %w", err)
 	}
 	planned, err := buildPlannedFiles(absDir, skillContent, extraFiles)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	entries, readErr := os.ReadDir(absDir)
 	if readErr != nil && !os.IsNotExist(readErr) {
-		return fmt.Errorf("read directory %s: %w", absDir, readErr)
+		return nil, fmt.Errorf("read directory %s: %w", absDir, readErr)
 	}
 	exists := readErr == nil
 	nonEmpty := exists && len(entries) > 0
 
 	onDisk, err := listRegularFiles(absDir, exists)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	actions, err := computeInventoryActions(absDir, planned, onDisk)
 	if err != nil {
+		return nil, err
+	}
+	return &inventoryPlan{
+		absDir:   absDir,
+		exists:   exists,
+		nonEmpty: nonEmpty,
+		actions:  actions,
+	}, nil
+}
+
+func installTo(dir string, skillContent string, extraFiles []InstallFile, dryRun bool, noOverride bool) error {
+	plan, err := planInventory(dir, skillContent, extraFiles)
+	if err != nil {
 		return err
 	}
-	if len(actions) == 0 {
-		printUpToDate(absDir, dryRun)
+	if len(plan.actions) == 0 {
+		printUpToDate(plan.absDir, dryRun)
 		return nil
 	}
-	if !dryRun && nonEmpty && noOverride && !confirmOverwrite(absDir) {
+	if !dryRun && plan.nonEmpty && noOverride && !confirmOverwrite(plan.absDir) {
 		fmt.Println("Aborted.")
 		return nil
 	}
-	header := installHeader(absDir, exists)
+	header := installHeader(plan.absDir, plan.exists)
 	if dryRun {
-		printInventoryPlan(header, actions, true)
+		printInventoryPlan(header, plan.actions, true)
 		return nil
 	}
-	if err := applyInventoryActions(absDir, actions); err != nil {
+	if err := applyInventoryActions(plan.absDir, plan.actions); err != nil {
 		return err
 	}
-	printInventoryPlan(header, actions, false)
+	printInventoryPlan(header, plan.actions, false)
 	return nil
 }
 

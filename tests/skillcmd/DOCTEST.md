@@ -27,9 +27,10 @@ Participants:
   extract or re-wrap YAML frontmatter (migrated from `skill_file`).
 - **Install/Update** — `HandleInstall` / `HandleUpdate` / `HandleUpdateMany`
   write or refresh `.<tool>/skills/<name>/` layouts (migrated from `install`).
-  Batch update prints `skill not installed: <name>` when no `SKILL.md` exists.
-  Install inventory treats unplanned on-disk files as orphans (delete) and uses
-  incremental create/update/delete (see `tests/install` inventory leaves).
+  Batch update prints polished `name  not installed` (and a trailing summary)
+  when no `SKILL.md` exists. Install inventory treats unplanned on-disk files as
+  orphans (delete) and uses incremental create/update/delete (see
+  `tests/install` inventory leaves).
 
 Behaviors:
 
@@ -64,7 +65,7 @@ skillcmd/
 │   ├── reject-dotdot
 │   ├── install-extra-files
 │   └── list-topics
-├── registry/                      # multi-skill host
+├── multi/                      # multi-skill host
 │   ├── list-skills
 │   ├── show-by-name/
 │   │   ├── flag-before-name
@@ -101,12 +102,12 @@ skillcmd/
 | `single-tree/reject-dotdot` | `--show ../x` errors on invalid segment |
 | `single-tree/install-extra-files` | install writes `skill-cli/TOPIC.md` (not nested SKILL.md / topics/*) |
 | `single-tree/list-topics` | `--list` lists skill name + topics from `**/TOPIC.md` |
-| `registry/list-skills` | `--list` lists registered names (+ description) |
-| `registry/show-by-name/flag-before-name` | `--show foo` prints foo content |
-| `registry/show-by-name/name-before-flag` | `foo --show` prints same content |
-| `registry/install-named` | `--install foo --dry-run` targets foo skill dir |
-| `registry/update-many/skip-missing` | not installed → `skill not installed: <name>` |
-| `registry/update-many/updates-installed` | existing SKILL.md refreshed on update |
+| `multi/list-skills` | `--list` lists registered names (+ description) |
+| `multi/show-by-name/flag-before-name` | `--show foo` prints foo content |
+| `multi/show-by-name/name-before-flag` | `foo --show` prints same content |
+| `multi/install-named` | `--install foo --dry-run` targets foo skill dir |
+| `multi/update-many/skip-missing` | not installed → polished `name  not installed` + summary |
+| `multi/update-many/updates-installed` | existing SKILL.md refreshed; polished `updated` status |
 | `file-header/get-header` | GetHeader returns inner YAML without delimiters |
 | `file-header/format-header` | FormatHeaderWithDelimiters wraps with `---` |
 | `install-compat/fresh-default` | HandleInstall default dir succeeds under skillcmd |
@@ -129,11 +130,19 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"testing/fstest"
 
+	"github.com/xhd2015/doctest/session"
 	"github.com/xhd2015/skills/skillcmd"
 )
+
+// processMu serializes process-global mutations in Run (chdir, os.Stdout,
+// HOME). Doctest leaves use t.Parallel(); skillcmd product APIs resolve relative
+// skill paths from the process cwd and print via os.Stdout.
+var processMu sync.Mutex
+
 
 // Mode selects which skillcmd surface Run exercises.
 type Mode string
@@ -215,11 +224,16 @@ type Response struct {
 	HomeDir string
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
 	t.Helper()
+	_ = d
 	if req.Mode == "" {
 		return nil, fmt.Errorf("req.Mode is required")
 	}
+
+	// Serialize process-global side effects used by install/update/show handlers.
+	processMu.Lock()
+	defer processMu.Unlock()
 
 	resp := &Response{}
 
