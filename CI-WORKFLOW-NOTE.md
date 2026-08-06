@@ -11,8 +11,9 @@
 | Branch | `master-2026-08-06-use-go-best-practice-to-review-current-project` |
 | Remote | `ssh://git@github.com/xhd2015/skills` (`origin`) |
 | Upstream | `origin/master-2026-08-06-use-go-best-practice-to-review-current-project` (set on push) |
-| Commit SHA | `7750ed6a61074bf88988db58b0715525d7f4e821` (`7750ed6`) |
-| Push result | **success** — `c2a86cf..7750ed6  HEAD -> master-2026-08-06-use-go-best-practice-to-review-current-project` |
+| CI commit SHA | `7750ed6a61074bf88988db58b0715525d7f4e821` (`7750ed6`) — workflow + helper |
+| Tip SHA (note) | `8b9ea1afa51e640c568c68b973ff6caccf9cd2ec` (`8b9ea1a`) — this note |
+| Push result | **success** — `c2a86cf..7750ed6` then `7750ed6..8b9ea1a` on `master-2026-08-06-use-go-best-practice-to-review-current-project` |
 
 ## Paths changed (CI commit)
 
