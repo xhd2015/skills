@@ -19,7 +19,8 @@ HandleInstall -> update: <absDir>/SKILL.md; content becomes new
 2. Install with new SkillContent.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.PreExistingDir = "example-skill"
 	req.PreExistingFiles = []PreExistingFile{
 		{Name: "SKILL.md", Content: "# old skill\n"},

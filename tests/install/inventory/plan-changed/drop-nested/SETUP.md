@@ -18,7 +18,8 @@ HandleInstall -> delete: <absDir>/a/TOPIC.md; nested file gone
 2. Install with matching root content and empty ExtraFiles.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.PreExistingDir = "example-skill"
 	req.PreExistingFiles = []PreExistingFile{
 		{Name: "SKILL.md", Content: "# test skill\n"},

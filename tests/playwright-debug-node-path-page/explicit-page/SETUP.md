@@ -20,7 +20,8 @@ user -> playwright-debug CLI (run <fixture.js>) -> greet(page) -> page.goto -> e
 - Leaf is labeled `slow` (launches browser).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

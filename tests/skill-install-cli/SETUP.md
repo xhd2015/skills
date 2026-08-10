@@ -41,24 +41,26 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func moduleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func moduleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("cannot find go.mod from %s", DOCTEST_ROOT)
+			return "", fmt.Errorf("cannot find go.mod from %s", d.DOCTEST_ROOT)
 		}
 		dir = parent
 	}
 }
 
-func sessionCacheDir() string {
-	return filepath.Join(os.TempDir(), "skill-install-cli-"+DOCTEST_SESSION_ID)
+func sessionCacheDir(d *session.Doctest) string {
+	return filepath.Join(os.TempDir(), "skill-install-cli-"+d.DOCTEST_SESSION_ID)
 }
 
 func withFileLock(t *testing.T, lockPath string, fn func() error) error {
@@ -78,9 +80,9 @@ func withFileLock(t *testing.T, lockPath string, fn func() error) error {
 	return fn()
 }
 
-func buildCLIBinaryOnce(t *testing.T, name, pkg string) (string, error) {
+func buildCLIBinaryOnce(t *testing.T, d *session.Doctest, name, pkg string) (string, error) {
 	t.Helper()
-	cacheDir := sessionCacheDir()
+	cacheDir := sessionCacheDir(d)
 	bin := filepath.Join(cacheDir, name)
 	ready := filepath.Join(cacheDir, name+".ready")
 	lock := filepath.Join(cacheDir, name+".lock")
@@ -91,7 +93,7 @@ func buildCLIBinaryOnce(t *testing.T, name, pkg string) (string, error) {
 				return nil
 			}
 		}
-		root, err := moduleRoot()
+		root, err := moduleRoot(d)
 		if err != nil {
 			return err
 		}
@@ -115,19 +117,20 @@ func buildCLIBinaryOnce(t *testing.T, name, pkg string) (string, error) {
 	return bin, nil
 }
 
-func buildGoBestPracticeOnce(t *testing.T) (string, error) {
-	return buildCLIBinaryOnce(t, "go-best-practice", "./cmd/go-best-practice")
+func buildGoBestPracticeOnce(t *testing.T, d *session.Doctest) (string, error) {
+	return buildCLIBinaryOnce(t, d, "go-best-practice", "./cmd/go-best-practice")
 }
 
-func buildPlaywrightDebugOnce(t *testing.T) (string, error) {
-	return buildCLIBinaryOnce(t, "playwright-debug", "./cmd/playwright-debug")
+func buildPlaywrightDebugOnce(t *testing.T, d *session.Doctest) (string, error) {
+	return buildCLIBinaryOnce(t, d, "playwright-debug", "./cmd/playwright-debug")
 }
 
-func buildGithubFetchOnce(t *testing.T) (string, error) {
-	return buildCLIBinaryOnce(t, "github-fetch", "./cmd/github-fetch")
+func buildGithubFetchOnce(t *testing.T, d *session.Doctest) (string, error) {
+	return buildCLIBinaryOnce(t, d, "github-fetch", "./cmd/github-fetch")
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

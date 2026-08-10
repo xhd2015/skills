@@ -19,7 +19,8 @@ user -> playwright-debug CLI (run, bad args) -> routing error on stderr
 - Combined stdout+stderr carries user-facing error messages.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

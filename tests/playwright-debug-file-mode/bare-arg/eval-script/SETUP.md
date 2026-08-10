@@ -11,7 +11,8 @@ user -> playwright-debug CLI ('console.log("eval-ok")') -> eval-ok
 1. Descendant sets bare eval script on `req.Args`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

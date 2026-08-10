@@ -11,7 +11,8 @@ user -> playwright-debug CLI (run 'await page.goto("x")') -> requires existing .
 1. Set `req.Args = []string{"run", `await page.goto("x")`}`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"run", `await page.goto("x")`}
 	return nil
 }

@@ -11,7 +11,8 @@ user -> playwright-debug CLI (-e|--eval bad usage) -> routing error
 1. Each leaf sets invalid eval flag combinations.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

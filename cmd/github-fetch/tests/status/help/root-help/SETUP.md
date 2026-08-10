@@ -21,7 +21,8 @@ github-fetch -h -> command list includes status
 - Does not run the status logic; only checks root help wiring.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"-h"}
 	return nil
 }

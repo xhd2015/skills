@@ -15,7 +15,8 @@ func makePagedPRs(n int) []MockPRListItem {
 	return prs
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Default pagination fixture: four open PRs when a leaf does not override MockPRs.
 	if len(req.MockPRs) == 0 {
 		req.MockPRs = makePagedPRs(4)

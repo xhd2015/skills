@@ -23,8 +23,9 @@ inner YAML -> ParseHeader -> Entries.Get("name")
 - Delimiters must not appear in the `GetHeader` return value.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	req.Content = readFixture(t, "skill_content.md")
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	req.Content = readFixture(t, d, "skill_content.md")
 	return nil
 }
 ```

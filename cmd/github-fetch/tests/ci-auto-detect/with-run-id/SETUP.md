@@ -11,7 +11,8 @@
 5. Check that stdout shows logs for the specified run #200, not run #100.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--run-id", "200", "--logs"}
 	req.OriginURL = "git@github.com:testowner/testrepo.git"
 	req.InGitRepo = true

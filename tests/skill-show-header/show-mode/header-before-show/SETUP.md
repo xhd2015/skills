@@ -20,7 +20,8 @@ user -> go-best-practice skill --header --show -> YAML frontmatter only
 - Output must match `--show --header` (delimiters + name, no body marker).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.HeaderOnly = true
 	req.HeaderBeforeShow = true
 	return nil

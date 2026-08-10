@@ -16,7 +16,8 @@ HandleInstall(ExtraFiles Path="SKILL.md") -> cannot replace SKILL.md
 ```go
 import "github.com/xhd2015/skills/install"
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.ExtraFiles = []install.InstallFile{
 		{Path: "SKILL.md", Content: []byte("content")},
 	}

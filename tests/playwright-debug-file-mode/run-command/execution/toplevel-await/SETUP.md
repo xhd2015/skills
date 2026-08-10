@@ -11,8 +11,9 @@ user -> playwright-debug CLI (run toplevel-await.js) -> toplevel-await-ok
 1. Run `testdata/toplevel-await.js` which uses top-level `await page.goto(...)`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"run", fixturePath("toplevel-await.js")}
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	req.Args = []string{"run", fixturePath(d, "toplevel-await.js")}
 	return nil
 }
 ```

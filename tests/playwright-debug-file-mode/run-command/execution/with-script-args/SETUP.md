@@ -20,7 +20,8 @@ user -> playwright-debug CLI (run print-argv.js <scriptArgs...>) -> JSON argv on
 - stdout is `JSON.stringify(process.argv.slice(3))` from the user script.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

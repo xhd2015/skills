@@ -3,7 +3,8 @@
 2. Expect open PRs from auto-detected repo on page 1.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"prs"}
 	return nil
 }

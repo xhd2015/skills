@@ -8,7 +8,8 @@
 3. Check that the command fails with an error about no origin remote.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--logs", "--workflow", "test"}
 	req.OriginURL = "" // explicitly empty: no origin
 	req.InGitRepo = true

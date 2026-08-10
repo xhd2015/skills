@@ -24,7 +24,8 @@ HandleInstall -> not up to date; delete: <abs>/orphan.txt
 - Pure cleanup still uses header `Update skill at` (dir already existed).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Orphan leaves keep planned root content matching disk; only unplanned files differ.
 	req.SkillContent = "# test skill\n"
 	return nil

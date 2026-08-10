@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
 type MockIssueListItem struct {
@@ -54,8 +56,8 @@ type Response struct {
 	Stderr   string
 }
 
-func findModuleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func findModuleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
@@ -160,8 +162,8 @@ func startIssueMockServer(issues []MockIssueListItem) *httptest.Server {
 	}))
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
-	moduleRoot, err := findModuleRoot()
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	moduleRoot, err := findModuleRoot(d)
 	if err != nil {
 		return nil, fmt.Errorf("find module root: %w", err)
 	}

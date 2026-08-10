@@ -11,8 +11,9 @@ user -> playwright-debug CLI (run print-argv.js extra) -> ["extra"]
 1. Run `print-argv.js` with one trailing arg after the file path.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"run", fixturePath("print-argv.js"), "extra"}
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	req.Args = []string{"run", fixturePath(d, "print-argv.js"), "extra"}
 	return nil
 }
 ```

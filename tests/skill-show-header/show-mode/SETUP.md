@@ -24,7 +24,8 @@ user -> skill CLI (skill --show) -> header + Markdown body
 - Body marker `# Go Best Practice Skill` distinguishes body content from header metadata.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Binary == "" {
 		t.Fatal("req.Binary must be set by root setup")
 	}

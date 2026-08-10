@@ -16,7 +16,8 @@ user -> github-fetch install -> unknown command error
 1. Set `req.Args = ["install"]`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"install"}
 	return nil
 }

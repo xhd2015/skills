@@ -3,7 +3,8 @@
 2. Expect issues for the explicit repo.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"issues", "otherowner/otherrepo"}
 	req.InGitRepo = false
 	req.MockIssues = []MockIssueListItem{

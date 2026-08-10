@@ -19,7 +19,8 @@ user -> playwright-debug CLI (no args) -> usage
 - Exit code 0; usage on stdout.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{}
 	return nil
 }

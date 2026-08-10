@@ -18,7 +18,8 @@ HandleInstall(ExtraFiles with invalid Path) -> error; no skill dir written
 - The default skill dir name is "example-skill" and default content is "# test skill\n".
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.SkillDirName == "" {
 		req.SkillDirName = "example-skill"
 	}

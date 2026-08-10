@@ -24,7 +24,8 @@ user -> playwright-debug CLI (-h) -> usage on stdout
 - Help text must end with a trailing newline after the last content line.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

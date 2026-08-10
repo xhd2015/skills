@@ -20,7 +20,8 @@ user -> go-best-practice skill --show --header -> ---\nname: ...\n---
 - stdout must include delimiter lines and `name:` but must omit `# Go Best Practice Skill`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.HeaderOnly = true
 	req.HeaderBeforeShow = false
 	return nil

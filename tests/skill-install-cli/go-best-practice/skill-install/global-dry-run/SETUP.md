@@ -17,7 +17,8 @@ user -> go-best-practice skill --install --global --dry-run -> HOME/.agents/skil
 2. Set `req.Args = ["skill", "--install", "--global", "--dry-run"]`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.UseGlobalHome = true
 	req.Args = []string{"skill", "--install", "--global", "--dry-run"}
 	return nil

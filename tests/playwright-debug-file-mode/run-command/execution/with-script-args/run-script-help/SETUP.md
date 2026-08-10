@@ -11,8 +11,9 @@ user -> playwright-debug CLI (run print-help.js --help) -> SCRIPT_HELP_OK
 1. Run `print-help.js` with `--help` after the file path.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"run", fixturePath("print-help.js"), "--help"}
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	req.Args = []string{"run", fixturePath(d, "print-help.js"), "--help"}
 	return nil
 }
 ```

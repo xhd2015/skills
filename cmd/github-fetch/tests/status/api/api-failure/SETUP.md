@@ -23,7 +23,8 @@ mock API 500 on /rate_limit or /user -> stderr error -> non-zero exit
 - Informational auth lines may be partially printed before failure; primary assertion is stderr + exit code.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.GhMode = GhAbsent
 	req.MockAPIFail = true
 	return nil

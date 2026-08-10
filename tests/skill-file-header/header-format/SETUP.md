@@ -22,19 +22,25 @@ header YAML -> ParseHeader -> single normalized description value
 ```go
 import (
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func readFixture(t *testing.T, name string) string {
+func readFixture(t *testing.T, d *session.Doctest, name string) string {
 	t.Helper()
-	data, err := os.ReadFile(name)
+	// DOCTEST_CASE is absolute path to the leaf directory.
+	path := filepath.Join(d.DOCTEST_CASE, name)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read fixture %s: %v", name, err)
+		t.Fatalf("read fixture %s: %v", path, err)
 	}
 	return string(data)
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Content != "" {
 		t.Fatalf("req.Content = %q before leaf setup, want empty", req.Content)
 	}

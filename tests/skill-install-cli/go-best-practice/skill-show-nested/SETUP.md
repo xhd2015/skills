@@ -17,7 +17,8 @@ user -> go-best-practice skill cli/skill-cli --show -> same content
 1. Leaves set Args for each flag order.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Binary == "" {
 		t.Fatal("req.Binary must be set")
 	}

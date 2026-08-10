@@ -4,7 +4,8 @@
 3. Expect only the closed PR in output.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"prs", "--state", "closed"}
 	req.MockPRs = []MockPRListItem{
 		{

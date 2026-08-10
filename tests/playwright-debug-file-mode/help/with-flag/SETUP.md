@@ -19,7 +19,8 @@ user -> playwright-debug CLI (-h) -> usage
 - Same content expectations as no-args help.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"-h"}
 	return nil
 }

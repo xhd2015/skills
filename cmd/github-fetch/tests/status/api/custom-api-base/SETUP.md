@@ -23,7 +23,8 @@ GITHUB_API_BASE_URL=mock URL -> status summary shows API base URL line
 - Verifies the binary reads and displays `GITHUB_API_BASE_URL`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.GhMode = GhAbsent
 	return nil
 }

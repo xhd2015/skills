@@ -11,7 +11,8 @@ user -> playwright-debug CLI (<simple-eval.js>) -> file-mode-ok
 1. Each descendant sets the bare file path on `req.Args`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

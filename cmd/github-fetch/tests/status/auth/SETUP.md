@@ -27,7 +27,8 @@ auth resolver (none) -> mock API /rate_limit -> rate limit section
 - `env-token` sets both `GITHUB_TOKEN` and a logged-in fake `gh` to prove token priority.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.MockAPIFail {
 		t.Fatalf("auth resolution leaves expect successful API probes")
 	}

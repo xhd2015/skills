@@ -7,7 +7,8 @@
 2. Run list commands without an explicit repo argument.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.OriginURL = "git@github.com:testowner/testrepo.git"
 	req.InGitRepo = true
 	return nil

@@ -17,7 +17,8 @@ user -> go-best-practice skill --install --dry-run -> [dry-run] .agents/skills/g
 2. Set `req.Args = ["skill", "--install", "--dry-run"]`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.UseWorkDir = true
 	req.Args = []string{"skill", "--install", "--dry-run"}
 	return nil

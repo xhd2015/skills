@@ -16,7 +16,8 @@ user -> go-best-practice skill --show -> stdout contains go-best-practice
 1. Set `req.Args = ["skill", "--show"]`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"skill", "--show"}
 	return nil
 }

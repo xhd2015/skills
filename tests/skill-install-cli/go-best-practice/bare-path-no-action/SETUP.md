@@ -12,7 +12,8 @@ user -> go-best-practice skill cli/skill-cli -> error (no bare path action)
 1. Set Args `skill cli/skill-cli` without --show/--install.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"skill", "cli/skill-cli"}
 	return nil
 }

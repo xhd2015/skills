@@ -14,7 +14,8 @@ func makePagedIssues(n int) []MockIssueListItem {
 	return issues
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if len(req.MockIssues) == 0 {
 		req.MockIssues = makePagedIssues(4)
 	}

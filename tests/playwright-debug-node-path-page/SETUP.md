@@ -38,24 +38,26 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func moduleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func moduleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("cannot find go.mod from %s", DOCTEST_ROOT)
+			return "", fmt.Errorf("cannot find go.mod from %s", d.DOCTEST_ROOT)
 		}
 		dir = parent
 	}
 }
 
-func sessionCacheDir() string {
-	return filepath.Join(os.TempDir(), "playwright-debug-node-path-page-"+DOCTEST_SESSION_ID)
+func sessionCacheDir(d *session.Doctest) string {
+	return filepath.Join(os.TempDir(), "playwright-debug-node-path-page-"+d.DOCTEST_SESSION_ID)
 }
 
 func withFileLock(t *testing.T, lockPath string, fn func() error) error {
@@ -75,9 +77,9 @@ func withFileLock(t *testing.T, lockPath string, fn func() error) error {
 	return fn()
 }
 
-func buildPlaywrightDebugOnce(t *testing.T) (string, error) {
+func buildPlaywrightDebugOnce(t *testing.T, d *session.Doctest) (string, error) {
 	t.Helper()
-	cacheDir := sessionCacheDir()
+	cacheDir := sessionCacheDir(d)
 	bin := filepath.Join(cacheDir, "playwright-debug")
 	ready := filepath.Join(cacheDir, "binaries.ready")
 	lock := filepath.Join(cacheDir, "build.lock")
@@ -88,7 +90,7 @@ func buildPlaywrightDebugOnce(t *testing.T) (string, error) {
 				return nil
 			}
 		}
-		root, err := moduleRoot()
+		root, err := moduleRoot(d)
 		if err != nil {
 			return err
 		}
@@ -112,11 +114,12 @@ func buildPlaywrightDebugOnce(t *testing.T) (string, error) {
 	return bin, nil
 }
 
-func fixturePath(parts ...string) string {
-	return filepath.Join(append([]string{DOCTEST_ROOT, "testdata"}, parts...)...)
+func fixturePath(d *session.Doctest, parts ...string) string {
+	return filepath.Join(append([]string{d.DOCTEST_ROOT, "testdata"}, parts...)...)
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

@@ -10,7 +10,8 @@
 4. Check that stdout lists only the "test" run (filtered), not "lint", and shows detected URL.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--workflow", "test"}
 	req.OriginURL = "git@github.com:testowner/testrepo.git"
 	req.InGitRepo = true

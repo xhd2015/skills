@@ -52,9 +52,14 @@ caller --dry-run -> HandleInstall -> stdout only
   `"extra install file cannot replace SKILL.md"`.
 
 ```go
-import "testing"
+import (
+	"testing"
 
-func Setup(t *testing.T, req *Request) error {
+	"github.com/xhd2015/doctest/session"
+)
+
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Normalize slices so leaf Setups can append without nil checks.
 	if req.Args == nil {
 		req.Args = []string{}
