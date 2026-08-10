@@ -103,10 +103,10 @@ jobs:
       - name: Install kool (coverage package table)
         # Released kool (v0.0.136+): kool go coverage package-table
         # install.sh → /usr/local/bin; also keep ~/.xgo/bin and ~/go/bin on PATH.
+        # Note: kool has no `version` subcommand — prove install via package-table -h.
         run: |
           curl -fsSL https://github.com/xhd2015/kool/raw/master/install.sh | bash
           export PATH="/usr/local/bin:$HOME/.xgo/bin:$HOME/go/bin:$PATH"
-          kool version
           # package-table requires v0.0.136+
           kool go coverage package-table -h >/dev/null
 
