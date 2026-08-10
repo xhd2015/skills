@@ -24,7 +24,8 @@ HandleInstall(--no-override example-skill)
   because the directory already existed.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.PreExistingDir = "example-skill"
 	// No PreExistingFiles — directory is empty
 	req.Args = []string{"--no-override", "example-skill"}

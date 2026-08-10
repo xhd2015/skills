@@ -21,7 +21,8 @@ github-fetch status -h -> status usage text on stdout
 - Should mention `status` and read as usage/help output.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"status", "-h"}
 	return nil
 }

@@ -23,7 +23,8 @@ user -> go-best-practice skill --install -> .agents/skills/go-best-practice/
 - Default local target is `.agents/skills/go-best-practice` relative to the work dir.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Binary == "" {
 		t.Fatal("req.Binary must be set by go-best-practice setup")
 	}

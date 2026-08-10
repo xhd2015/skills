@@ -4,7 +4,8 @@
 3. Expect PRs from the second page (numbers 2 and 1).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"prs", "--page", "2", "--per-page", "2"}
 	req.MockPRs = makePagedPRs(4)
 	return nil

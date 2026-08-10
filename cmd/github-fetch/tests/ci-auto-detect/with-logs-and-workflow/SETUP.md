@@ -9,7 +9,8 @@
 4. Check that stdout contains a status header showing "test" workflow with "failure", the log content, and the detected GitHub URL.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--logs", "--workflow", "test"}
 	req.OriginURL = "git@github.com:testowner/testrepo.git"
 	req.InGitRepo = true

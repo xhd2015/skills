@@ -130,7 +130,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sync"
+	"syscall"
 	"testing"
 	"testing/fstest"
 
@@ -138,10 +138,22 @@ import (
 	"github.com/xhd2015/skills/skillcmd"
 )
 
-// processMu serializes process-global mutations in Run (chdir, os.Stdout,
-// HOME). Doctest leaves use t.Parallel(); skillcmd product APIs resolve relative
-// skill paths from the process cwd and print via os.Stdout.
-var processMu sync.Mutex
+// withProcessLock serializes process-global mutations (chdir, os.Stdout, HOME)
+// across all doctest trees in the same go test process. A package-local mutex
+// is not enough when workspace suites run multiple trees together.
+func withProcessLock(fn func() error) error {
+	lockPath := filepath.Join(os.TempDir(), "skills-doctest-process.lock")
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	return fn()
+}
 
 
 // Mode selects which skillcmd surface Run exercises.
@@ -231,10 +243,17 @@ func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("req.Mode is required")
 	}
 
-	// Serialize process-global side effects used by install/update/show handlers.
-	processMu.Lock()
-	defer processMu.Unlock()
+	var resp *Response
+	err := withProcessLock(func() error {
+		var runErr error
+		resp, runErr = runLocked(t, req)
+		return runErr
+	})
+	return resp, err
+}
 
+func runLocked(t *testing.T, req *Request) (*Response, error) {
+	t.Helper()
 	resp := &Response{}
 
 	if req.UseWorkDir {
@@ -253,7 +272,17 @@ func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
 	if req.UseGlobalHome {
 		homeDir := t.TempDir()
 		resp.HomeDir = homeDir
-		t.Setenv("HOME", homeDir)
+		prevHome, hadHome := os.LookupEnv("HOME")
+		if err := os.Setenv("HOME", homeDir); err != nil {
+			return nil, err
+		}
+		defer func() {
+			if hadHome {
+				_ = os.Setenv("HOME", prevHome)
+			} else {
+				_ = os.Unsetenv("HOME")
+			}
+		}()
 	}
 
 	switch req.Mode {

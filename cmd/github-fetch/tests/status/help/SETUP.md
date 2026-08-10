@@ -23,7 +23,8 @@ github-fetch status -h -> status-specific usage
 - Help tests exit 0 and print usage to stdout.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Clear root default `status` argv; help leaves set explicit `-h` invocations.
 	if len(req.Args) == 1 && req.Args[0] == "status" {
 		req.Args = nil

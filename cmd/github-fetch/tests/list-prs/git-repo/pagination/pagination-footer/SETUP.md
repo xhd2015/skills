@@ -5,7 +5,8 @@
 4. Expect footer hint to use `--page 2`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"prs"}
 	req.MockPRs = makePagedPRs(35)
 	req.HasNextPage = true

@@ -49,6 +49,7 @@ doctest test -v ./tests/skill-file-header
 import (
 	"testing"
 
+	"github.com/xhd2015/doctest/session"
 	"github.com/xhd2015/skills/skill_file"
 )
 
@@ -63,7 +64,8 @@ type Response struct {
 	ParseErr   error
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	_ = d
 	header, headerErr := skill_file.GetHeader(req.Content)
 	resp := &Response{
 		Header:    header,

@@ -55,6 +55,8 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
 type Request struct {
@@ -67,8 +69,9 @@ type Response struct {
 	ExitCode int
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
-	bin, err := buildPlaywrightDebugOnce(t)
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	_ = d
+	bin, err := buildPlaywrightDebugOnce(t, d)
 	if err != nil {
 		return nil, err
 	}

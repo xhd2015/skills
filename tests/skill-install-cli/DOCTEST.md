@@ -81,8 +81,26 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
+
+// withProcessLock serializes process-global chdir across workspace trees.
+func withProcessLock(fn func() error) error {
+	lockPath := filepath.Join(os.TempDir(), "skills-doctest-process.lock")
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	return fn()
+}
 
 type Request struct {
 	Binary        string
@@ -100,7 +118,8 @@ type Response struct {
 	HomeDir  string
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	_ = d
 	if req.Binary == "" {
 		return nil, fmt.Errorf("CLI binary path is required")
 	}
@@ -108,6 +127,16 @@ func Run(t *testing.T, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("CLI args are required")
 	}
 
+	var resp *Response
+	err := withProcessLock(func() error {
+		var runErr error
+		resp, runErr = runLocked(t, req)
+		return runErr
+	})
+	return resp, err
+}
+
+func runLocked(t *testing.T, req *Request) (*Response, error) {
 	resp := &Response{}
 
 	if req.UseWorkDir {
@@ -125,14 +154,14 @@ func Run(t *testing.T, req *Request) (*Response, error) {
 		}()
 	}
 
+	cmd := exec.Command(req.Binary, req.Args...)
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	if req.UseGlobalHome {
 		homeDir := t.TempDir()
 		resp.HomeDir = homeDir
-		t.Setenv("HOME", homeDir)
+		// Parallel-safe: set HOME on child env only (not t.Setenv).
+		cmd.Env = append(cmd.Env, "HOME="+homeDir)
 	}
-
-	cmd := exec.Command(req.Binary, req.Args...)
-	cmd.Env = append(os.Environ(), "GOWORK=off")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -2,7 +2,8 @@
 1. Run `issues --state closed` with one closed and one open issue.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"issues", "--state", "closed"}
 	req.MockIssues = []MockIssueListItem{
 		{

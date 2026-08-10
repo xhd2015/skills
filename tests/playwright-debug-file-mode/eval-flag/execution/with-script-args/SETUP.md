@@ -20,7 +20,8 @@ user -> playwright-debug CLI (-e|--eval <script> <scriptArgs...>) -> JSON argv o
 - Inline script logs `JSON.stringify(process.argv.slice(3))`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

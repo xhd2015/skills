@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/xhd2015/doctest/session"
+
 	"github.com/xhd2015/skills/cmd/github-fetch/github-mock"
 )
 
@@ -64,8 +66,8 @@ type Response struct {
 	Stderr   string
 }
 
-func findModuleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func findModuleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
@@ -78,8 +80,8 @@ func findModuleRoot() (string, error) {
 	}
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
-	moduleRoot, err := findModuleRoot()
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	moduleRoot, err := findModuleRoot(d)
 	if err != nil {
 		return nil, fmt.Errorf("find module root: %w", err)
 	}

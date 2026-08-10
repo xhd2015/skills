@@ -23,7 +23,8 @@ mock API /rate_limit -> rate limit section
 - gh CLI line should read `available`; API access remains unauthenticated.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.GhMode = GhNotLoggedIn
 	return nil
 }

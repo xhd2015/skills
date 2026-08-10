@@ -25,7 +25,8 @@ GITHUB_TOKEN env + fake gh (logged in) -> auth resolver (GITHUB_TOKEN) -> mock A
 - API access line: `authenticated (via GITHUB_TOKEN) as testuser`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.GithubToken = "gho_secrettoken12345"
 	req.GhMode = GhLoggedIn
 	req.GhUsername = "ghuser"

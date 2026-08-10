@@ -12,7 +12,8 @@ user -> go-best-practice skill --show cli/skill-cli -> skill-cli nested body
 1. Set Args for flag-before-path order.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"skill", "--show", "cli/skill-cli"}
 	return nil
 }

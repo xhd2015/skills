@@ -32,13 +32,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Binary != "" {
 		return nil
 	}
-	repoRoot := filepath.Clean(filepath.Join(DOCTEST_ROOT, "..", ".."))
+	repoRoot := filepath.Clean(filepath.Join(d.DOCTEST_ROOT, "..", ".."))
 	req.Binary = filepath.Join(t.TempDir(), "go-best-practice")
 	cmd := exec.Command("go", "build", "-o", req.Binary, "./cmd/go-best-practice")
 	cmd.Dir = repoRoot

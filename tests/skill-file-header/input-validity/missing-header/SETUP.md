@@ -20,8 +20,9 @@ SKILL.md content -> GetHeader -> error
 - `ParseHeader` must not run when `GetHeader` fails.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	req.Content = readFixture(t, "skill_content.md")
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	req.Content = readFixture(t, d, "skill_content.md")
 	return nil
 }
 ```

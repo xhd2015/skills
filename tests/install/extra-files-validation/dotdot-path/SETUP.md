@@ -16,7 +16,8 @@ HandleInstall(ExtraFiles Path="..") -> invalid install file path
 ```go
 import "github.com/xhd2015/skills/install"
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.ExtraFiles = []install.InstallFile{
 		{Path: "..", Content: []byte("content")},
 	}

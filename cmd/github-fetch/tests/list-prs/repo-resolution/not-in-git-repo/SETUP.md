@@ -8,7 +8,8 @@
 3. Expect an error about missing git repository for auto-detection.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"prs"}
 	req.InGitRepo = false
 	return nil

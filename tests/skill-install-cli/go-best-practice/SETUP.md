@@ -26,8 +26,9 @@ user -> go-best-practice install -> skill --install equivalent
   (migrated from `topics/*.md`).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	bin, err := buildGoBestPracticeOnce(t)
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	bin, err := buildGoBestPracticeOnce(t, d)
 	if err != nil {
 		return err
 	}

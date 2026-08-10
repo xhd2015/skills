@@ -20,7 +20,8 @@ var defaultOpenIssues = []MockIssueListItem{
 	},
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.MockIssues = defaultOpenIssues
 	return nil
 }

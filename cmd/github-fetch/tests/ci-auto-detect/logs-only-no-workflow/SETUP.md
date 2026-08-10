@@ -11,7 +11,8 @@
 4. Check that stdout contains a status header for the latest run ("lint", failed) and its logs.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--logs"}
 	req.OriginURL = "git@github.com:testowner/testrepo.git"
 	req.InGitRepo = true

@@ -22,7 +22,8 @@ fake gh (logged in) -> auth resolver (gh) -> mock API /user + /rate_limit -> aut
 - Expected API access line: `authenticated (via gh) as testuser`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.GhMode = GhLoggedIn
 	req.GhUsername = "testuser"
 	req.GhHost = "github.com"

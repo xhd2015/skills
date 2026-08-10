@@ -25,7 +25,8 @@ mock API 500 -> stderr error, non-zero exit
 - `custom-api-base` uses unauthenticated path (no gh, no token) for simplicity.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if len(req.Args) == 0 || req.Args[0] != "status" {
 		req.Args = []string{"status"}
 	}

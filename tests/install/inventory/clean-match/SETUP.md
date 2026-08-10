@@ -23,7 +23,8 @@ HandleInstall -> "Skill is up to date" (no writes)
 - Up-to-date path must not print create/update/delete detail lines.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Clean-match leaves seed disk equal to plan; default target is explicit dir.
 	req.SkillContent = "# test skill\n"
 	return nil

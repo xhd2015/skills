@@ -24,7 +24,8 @@ HandleInstall
 ```go
 import "github.com/xhd2015/skills/install"
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	const nestedBody = "# nested topic body\n"
 	req.PreExistingDir = "example-skill"
 	req.PreExistingFiles = []PreExistingFile{

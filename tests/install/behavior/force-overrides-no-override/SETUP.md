@@ -20,7 +20,8 @@ HandleInstall(--force --no-override) -> Update skill at; no Aborted
 - The directory should be updated without triggering the confirmation prompt.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.PreExistingDir = "example-skill"
 	req.PreExistingFiles = []PreExistingFile{
 		{Name: "SKILL.md", Content: "# old skill\n"},

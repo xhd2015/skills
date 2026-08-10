@@ -19,7 +19,8 @@ user -> playwright-debug CLI (run <fixture.js>) -> file runner -> marker on stdo
 - All leaves in this group are labeled `slow`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.Args == nil {
 		req.Args = []string{}
 	}

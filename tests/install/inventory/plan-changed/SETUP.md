@@ -24,7 +24,8 @@ HandleInstall -> Update skill at + create:/update:/delete: lines
 - Detail order: creates (sorted), updates (sorted), deletes (sorted).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Plan-changed leaves always start from an existing skill directory.
 	req.PreExistingDir = "example-skill"
 	return nil

@@ -11,7 +11,8 @@
 5. Check that the command fails with an error listing available workflows.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	req.Args = []string{"--workflow", "test"}
 	req.OriginURL = "git@github.com:testowner/testrepo.git"
 	req.InGitRepo = true

@@ -43,10 +43,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
-func findModuleRoot() (string, error) {
-	dir := DOCTEST_ROOT
+func findModuleRoot(d *session.Doctest) (string, error) {
+	dir := d.DOCTEST_ROOT
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
@@ -195,7 +197,8 @@ exit 1
 	}
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if len(req.Args) == 0 {
 		req.Args = []string{"status"}
 	}

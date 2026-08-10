@@ -22,7 +22,8 @@ HandleInstall -> "Installed skill to: <absDir>" + create: lines for plan files
 - Header is always `Installed skill to:` when the dir was missing.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	// Fresh leaves must not pre-create the skill dir.
 	req.PreExistingDir = ""
 	req.PreExistingFiles = nil

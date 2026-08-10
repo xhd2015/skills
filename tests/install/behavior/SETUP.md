@@ -17,7 +17,8 @@ HandleInstall(args) -> Installed skill to: | Update skill at | Aborted.
 - These defaults can be overridden by leaf Setup functions.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
 	if req.SkillDirName == "" {
 		req.SkillDirName = "example-skill"
 	}

@@ -106,10 +106,29 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
+	"github.com/xhd2015/doctest/session"
 	"github.com/xhd2015/skills/install"
 )
+
+// withProcessLock serializes process-global mutations across all doctest trees
+// in the same go test process (shared flock path).
+func withProcessLock(fn func() error) error {
+	lockPath := filepath.Join(os.TempDir(), "skills-doctest-process.lock")
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	return fn()
+}
+
 
 type Request struct {
 	SkillDirName string
@@ -141,7 +160,18 @@ type Response struct {
 	WorkDir string // absolute path to the working temp directory
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	_ = d
+	var resp *Response
+	err := withProcessLock(func() error {
+		var runErr error
+		resp, runErr = runLocked(t, req)
+		return runErr
+	})
+	return resp, err
+}
+
+func runLocked(t *testing.T, req *Request) (*Response, error) {
 	tmpDir := t.TempDir()
 
 	prevWD, err := os.Getwd()
@@ -156,7 +186,17 @@ func Run(t *testing.T, req *Request) (*Response, error) {
 
 	if req.UseGlobalHome {
 		homeDir := t.TempDir()
-		t.Setenv("HOME", homeDir)
+		prevHome, hadHome := os.LookupEnv("HOME")
+		if err := os.Setenv("HOME", homeDir); err != nil {
+			return nil, err
+		}
+		defer func() {
+			if hadHome {
+				_ = os.Setenv("HOME", prevHome)
+			} else {
+				_ = os.Unsetenv("HOME")
+			}
+		}()
 	}
 
 	// Set up pre-existing directory and files (nested Names get parent MkdirAll).

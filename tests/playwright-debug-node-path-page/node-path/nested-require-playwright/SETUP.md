@@ -11,8 +11,9 @@ user -> playwright-debug CLI (run require-playwright-nested/main.js) -> playwrig
 1. Run `testdata/require-playwright-nested/main.js` which requires `./lib/check-playwright`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
-	req.Args = []string{"run", fixturePath("require-playwright-nested", "main.js")}
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	_ = d
+	req.Args = []string{"run", fixturePath(d, "require-playwright-nested", "main.js")}
 	return nil
 }
 ```
