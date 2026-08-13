@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/xhd2015/dot-pkgs/go-pkgs/terminal/color"
 	"github.com/xhd2015/less-gen/flags"
 )
 
@@ -102,7 +103,7 @@ func handleUpdate(w io.Writer, opts InstallOptions, args []string) error {
 		}
 		return err
 	}
-	style := newColorStyle(colorMode)
+	style := color.Style{Enabled: color.EnabledFor(colorMode, w)}
 	skillDirName := skillDirNameFrom(opts)
 	dirs, err := ResolveTargetDirs(skillDirName, tf, args)
 	if err != nil {
@@ -145,7 +146,7 @@ func handleUpdateMany(w io.Writer, skills []UpdateSkill, args []string) error {
 		}
 		return err
 	}
-	style := newColorStyle(colorMode)
+	style := color.Style{Enabled: color.EnabledFor(colorMode, w)}
 
 	var nUpdated, nWouldUpdate, nUpToDate, nNotInstalled int
 	for _, skill := range skills {
@@ -173,7 +174,7 @@ func handleUpdateMany(w io.Writer, skills []UpdateSkill, args []string) error {
 	}
 	fmt.Fprintln(w)
 	summary := formatUpdateSummary(nUpdated, nWouldUpdate, nUpToDate, nNotInstalled, dryRun)
-	fmt.Fprintln(w, style.gray(summary))
+	fmt.Fprintln(w, style.Gray(summary))
 	return nil
 }
 
@@ -234,8 +235,8 @@ func sortInventoryActions(actions []inventoryAction) []inventoryAction {
 	return out
 }
 
-func printUpdateSkillResult(w io.Writer, style colorStyle, r updateSkillResult) {
-	status := style.colorStatus(r.status)
+func printUpdateSkillResult(w io.Writer, style color.Style, r updateSkillResult) {
+	status := colorStatus(style, r.status)
 	if len(r.actions) == 0 {
 		fmt.Fprintf(w, "%s  %s\n", r.name, status)
 		return
@@ -244,7 +245,7 @@ func printUpdateSkillResult(w io.Writer, style colorStyle, r updateSkillResult) 
 	// Counts and parentheses stay plain; only the status token is tinted.
 	fmt.Fprintf(w, "%s  %s  (%s)\n", r.name, status, counts)
 	for _, a := range r.actions {
-		fmt.Fprintf(w, "  %s  %s\n", style.gray(a.op), a.absPath)
+		fmt.Fprintf(w, "  %s  %s\n", style.Gray(a.op), a.absPath)
 	}
 }
 
@@ -291,7 +292,7 @@ func updateSkillDisplayName(skill UpdateSkill) string {
 	return skillDirNameFrom(skill.InstallOptions)
 }
 
-func parseUpdateFlags(opts InstallOptions, args []string) (TargetFlags, bool, ColorMode, []string, error) {
+func parseUpdateFlags(opts InstallOptions, args []string) (TargetFlags, bool, color.Mode, []string, error) {
 	usage := strings.TrimSpace(opts.Usage)
 	if usage == "" {
 		usage = "update"
@@ -328,17 +329,11 @@ Options:
 Multiple --cursor/--codex/--opencode/--general-agents flags can be combined.
 `, usage, skillDirName, skillDirName, skillDirName, skillDirName, skillDirName)).HelpNoExit().Parse(args)
 	if err != nil {
-		return TargetFlags{}, false, ColorAuto, nil, err
+		return TargetFlags{}, false, color.Auto, nil, err
 	}
-	if colorFlag && noColorFlag {
-		return TargetFlags{}, false, ColorAuto, nil, fmt.Errorf("--color and --no-color cannot be specified together")
-	}
-	mode := ColorAuto
-	if colorFlag {
-		mode = ColorAlways
-	}
-	if noColorFlag {
-		mode = ColorNever
+	mode, err := color.ModeFromFlags(colorFlag, noColorFlag)
+	if err != nil {
+		return TargetFlags{}, false, color.Auto, nil, err
 	}
 	return tf, dryRun, mode, args, nil
 }

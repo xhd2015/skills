@@ -111,6 +111,12 @@ func TestReadTopicCLIColor(t *testing.T) {
 	if !strings.Contains(content, "go-best-practice/cli/color") {
 		t.Errorf("cli/color missing nested frontmatter name: %s", content)
 	}
+	if !strings.Contains(content, "github.com/xhd2015/dot-pkgs/go-pkgs/terminal/color") {
+		t.Errorf("cli/color missing terminal/color import path: %s", content)
+	}
+	if strings.Contains(content, "func ResolveColor") || strings.Contains(content, "func Resolve(") {
+		t.Errorf("cli/color must not re-embed library Resolve: %s", content)
+	}
 }
 
 func TestReadTopicCLIParent(t *testing.T) {

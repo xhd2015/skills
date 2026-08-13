@@ -22,8 +22,8 @@ slash-separated path (e.g. `flags-parsing/types`, `cli/dry-run`).
   `github.com/xhd2015/xgo/support/cmd` (Debug mode, output capture,
   env vars, directory, I/O redirect)
 - `cli` — CLI UX and skill CLI packaging
-  - `color` — terminal ANSI color: `--color` / `--no-color`, TTY
-    auto, and the `NO_COLOR` env convention
+  - `color` — terminal ANSI color via `terminal/color`: `--color` /
+    `--no-color`, TTY auto, and the `NO_COLOR` env convention
   - `streaming` — stream CLI output as work proceeds; avoid
     buffering all output until the end (when to buffer, flush,
     NDJSON vs full JSON)

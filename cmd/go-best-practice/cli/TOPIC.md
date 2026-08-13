@@ -19,8 +19,8 @@ separately under `flags-parsing`.
 
 ## Topics
 
-- `color` — terminal ANSI color: `--color` / `--no-color`, TTY auto,
-  and the `NO_COLOR` env convention
+- `color` — terminal ANSI color via `terminal/color`: `--color` /
+  `--no-color`, TTY auto, and the `NO_COLOR` env convention
 - `streaming` — stream CLI output as work proceeds; avoid buffering
   all output until the end (when to buffer, flush, NDJSON vs full JSON)
 - `dry-run` — one pipeline with side-effect gates; avoid a separate
