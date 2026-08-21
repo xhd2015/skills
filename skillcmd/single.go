@@ -14,7 +14,7 @@ type SingleSkill struct {
 	TreeFS      fs.FS // optional; path "a/b" → "a/b/TOPIC.md"
 	ExtraFiles  []InstallFile
 	Usage       string
-	// Help is printed for skill -h/--help (and --show|--list with --help).
+	// Help is printed for skill -h/--help (and --show|--list|--version with --help).
 	// When empty, DefaultSingleSkillHelp(Usage, Name) is used.
 	Help string
 }
@@ -32,6 +32,7 @@ func DefaultSingleSkillHelp(usage, skillName string) string {
 	}
 	return fmt.Sprintf(`Usage: skill --show [--header] [<topic-path>]
        skill <topic-path> --show [--header]
+       skill --version
        skill --install [OPTIONS] [<dir>]
        skill --list
 
@@ -44,13 +45,14 @@ Install usage: %s [OPTIONS] [<dir>]
 
 Options:
   --show [--header] [path]   Print skill or topic content
+  --version                  Print root SKILL.md metadata.version
   --install [OPTIONS] [dir]  Install skill files (see --install --help)
   --list                     Print skill name and available topics (if any)
   -h, --help                 Show this help message
 `, name, usage)
 }
 
-// Handle runs list/show/install for this skill using ParseSkillArgs flag surface.
+// Handle runs list/show/version/install for this skill using ParseSkillArgs.
 func (s *SingleSkill) Handle(args []string) error {
 	parsed, err := ParseSkillArgs(args)
 	if err != nil {
@@ -64,6 +66,8 @@ func (s *SingleSkill) Handle(args []string) error {
 		return s.handleList()
 	case ActionShow:
 		return s.handleShow(parsed.Header, parsed.Rest)
+	case ActionVersion:
+		return s.handleVersion(parsed.Rest)
 	case ActionInstall:
 		return s.handleInstall(parsed.Rest)
 	default:
@@ -122,6 +126,13 @@ func (s *SingleSkill) handleShow(header bool, rest []string) error {
 	}
 	fmt.Print(content)
 	return nil
+}
+
+func (s *SingleSkill) handleVersion(rest []string) error {
+	if len(rest) > 0 {
+		return fmt.Errorf("unexpected arguments: %v", rest)
+	}
+	return printSkillVersion(s.Name, s.RootContent)
 }
 
 func (s *SingleSkill) loadContent(rest []string) (string, error) {

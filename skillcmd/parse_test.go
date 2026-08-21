@@ -1,6 +1,7 @@
 package skillcmd
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -35,15 +36,27 @@ func TestParseSkillArgsInstallWithHelpKeepsInstall(t *testing.T) {
 	if p.Action != ActionInstall {
 		t.Fatalf("Action = %q, want install", p.Action)
 	}
-	found := false
-	for _, a := range p.Rest {
-		if a == "--help" {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if !slices.Contains(p.Rest, "--help") {
 		t.Fatalf("Rest missing --help: %v", p.Rest)
+	}
+}
+
+func TestParseSkillArgsInstallPreservesDownstreamFlags(t *testing.T) {
+	for _, args := range [][]string{
+		{"--install", "demo", "--global", "target"},
+		{"demo", "--install", "--global", "target"},
+	} {
+		parsed, err := ParseSkillArgs(args)
+		if err != nil {
+			t.Fatalf("ParseSkillArgs(%v): %v", args, err)
+		}
+		if parsed.Action != ActionInstall {
+			t.Fatalf("ParseSkillArgs(%v) action = %q", args, parsed.Action)
+		}
+		want := []string{"demo", "--global", "target"}
+		if !slices.Equal(parsed.Rest, want) {
+			t.Fatalf("ParseSkillArgs(%v) rest = %v, want %v", args, parsed.Rest, want)
+		}
 	}
 }
 

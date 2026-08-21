@@ -33,10 +33,12 @@ func DefaultRegistrySkillHelp(usage string) string {
 	return fmt.Sprintf(`Usage: skill --list
        skill --show <name>
        skill <name> --show
+       skill --version <name>
+       skill <name> --version
        skill --install <name> [OPTIONS] [<dir>]
        skill <name> --install [OPTIONS] [<dir>]
 
-List registered skills, print a skill's SKILL.md, or install one skill.
+List registered skills, print a skill's SKILL.md or metadata.version, or install one skill.
 
 Install example: %s <name> [OPTIONS]
   Run skill --install <name> --help for install flags (--global, --cursor, …).
@@ -61,7 +63,7 @@ Options:
 `
 }
 
-// HandleSkill implements skill flag actions: --list | --show|--install name.
+// HandleSkill implements skill flag actions: list, show, version, and install.
 func (r *Registry) HandleSkill(args []string) error {
 	parsed, err := ParseSkillArgs(args)
 	if err != nil {
@@ -75,6 +77,8 @@ func (r *Registry) HandleSkill(args []string) error {
 		return r.listSkills()
 	case ActionShow:
 		return r.handleShow(parsed.Header, parsed.Rest)
+	case ActionVersion:
+		return r.handleVersion(parsed.Rest)
 	case ActionInstall:
 		return r.handleInstall(parsed.Rest)
 	default:
@@ -154,6 +158,21 @@ func (r *Registry) handleShow(header bool, rest []string) error {
 	}
 	fmt.Print(sk.Content)
 	return nil
+}
+
+func (r *Registry) handleVersion(rest []string) error {
+	if len(rest) == 0 {
+		return fmt.Errorf("expected skill name for --version")
+	}
+	name := rest[0]
+	if len(rest) > 1 {
+		return fmt.Errorf("unexpected arguments: %v", rest[1:])
+	}
+	sk, ok := r.find(name)
+	if !ok {
+		return fmt.Errorf("unknown skill: %s", name)
+	}
+	return printSkillVersion(name, sk.Content)
 }
 
 func (r *Registry) handleInstall(rest []string) error {

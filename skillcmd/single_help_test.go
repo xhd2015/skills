@@ -33,7 +33,7 @@ func TestSingleSkillHandleDefaultHelp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	for _, want := range []string{"--show", "--install", "--list", "demo"} {
+	for _, want := range []string{"--show", "--version", "--install", "--list", "demo"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("default help missing %q:\n%s", want, out)
 		}

@@ -16,6 +16,16 @@ type Entry = skillcmd.Entry
 // Deprecated: use skillcmd.Entries.
 type Entries = skillcmd.Entries
 
+// SkillHeader is standard SKILL.md frontmatter.
+//
+// Deprecated: use skillcmd.SkillHeader.
+type SkillHeader = skillcmd.SkillHeader
+
+// ErrSkillVersionMissing reports that metadata.version is absent or empty.
+//
+// Deprecated: use skillcmd.ErrSkillVersionMissing.
+var ErrSkillVersionMissing = skillcmd.ErrSkillVersionMissing
+
 // TrimHeader strips the YAML frontmatter header from a skill file.
 //
 // Deprecated: use skillcmd.TrimHeader.
@@ -35,6 +45,20 @@ func GetHeader(content string) (string, error) {
 // Deprecated: use skillcmd.ParseHeader.
 func ParseHeader(header string) (Entries, error) {
 	return skillcmd.ParseHeader(header)
+}
+
+// ParseSkillHeader parses standard SKILL.md YAML frontmatter.
+//
+// Deprecated: use skillcmd.ParseSkillHeader.
+func ParseSkillHeader(content string) (SkillHeader, error) {
+	return skillcmd.ParseSkillHeader(content)
+}
+
+// SkillVersion returns metadata.version from standard SKILL.md frontmatter.
+//
+// Deprecated: use skillcmd.SkillVersion.
+func SkillVersion(content string) (string, error) {
+	return skillcmd.SkillVersion(content)
 }
 
 // FormatHeaderWithDelimiters returns the YAML frontmatter block including delimiter lines.
