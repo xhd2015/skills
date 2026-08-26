@@ -90,6 +90,7 @@ when useful (e.g. green pass), not only “any escape present”.
 ## See also
 
 - `cli/streaming` — stream output as work proceeds
+- `cli/config` — gray `notice:` when a preference comes from config.json
 - `flags-parsing` — bool flags and help text with less-flags
 - [no-color.org](https://no-color.org/) — `NO_COLOR` convention
 

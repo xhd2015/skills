@@ -9,13 +9,13 @@ description: >-
 # cli — CLI UX and skill CLI packaging
 
 Recipes for building Go CLIs: how output looks and streams, interactive
-terminal UIs, and how to ship skill binaries that embed `SKILL.md` /
-nested `TOPIC.md` trees.
+terminal UIs, persisted preferences, and how to ship skill binaries that
+embed `SKILL.md` / nested `TOPIC.md` trees.
 
-This is a **category index**. `color`, `streaming`, and `dry-run` are
-general CLI I/O UX; `inline-tui-mouse` is mouse hit-testing for inline
-TUIs; `skill-cli` is how to package skill CLIs. Flag parsing lives
-separately under `flags-parsing`.
+This is a **category index**. `color`, `streaming`, `dry-run`, and
+`config` are general CLI I/O UX; `inline-tui-mouse` is mouse hit-testing
+for inline TUIs; `skill-cli` is how to package skill CLIs. Flag parsing
+lives separately under `flags-parsing`.
 
 ## Topics
 
@@ -25,6 +25,9 @@ separately under `flags-parsing`.
   all output until the end (when to buffer, flush, NDJSON vs full JSON)
 - `dry-run` — one pipeline with side-effect gates; avoid a separate
   dry-run function that duplicates logic
+- `config` — persist flag preferences in tool-home `config.json`:
+  `--set-config` / `--show-config` / `--no-config`, precedence, gray
+  `notice:` when a value comes from config
 - `skill-cli` — skill CLI shapes: single-skill, multi-skill host,
   topic discovery
 - `inline-tui-mouse` — mouse hit-testing for inline (non-alt-screen)
@@ -38,6 +41,7 @@ go-best-practice skill --show cli
 go-best-practice skill --show cli/color
 go-best-practice skill --show cli/streaming
 go-best-practice skill --show cli/dry-run
+go-best-practice skill --show cli/config
 go-best-practice skill --show cli/skill-cli
 go-best-practice skill --show cli/inline-tui-mouse
 go-best-practice skill cli/color --show
