@@ -6,13 +6,14 @@ CLI tools for AI-assisted development workflows.
 
 ### go-best-practice
 
-Index of Go best-practice recipes: project scaffolding, CLI flag parsing, command execution, and more.
+**Migrated** to https://github.com/xhd2015/go-best-practice  
+(`skills/cmd/go-best-practice` is only a redirect stub for old installs.)
 
 ```bash
-go install github.com/xhd2015/skills/cmd/go-best-practice@latest
-go-best-practice                    # list topics
-go-best-practice flags-parsing      # read a topic
-go-best-practice install --cursor   # install as cursor skill
+go install github.com/xhd2015/go-best-practice/cmd/go-best-practice@latest
+go-best-practice skill --list
+go-best-practice skill --show cli/config
+go-best-practice skill --install --global
 ```
 
 ### playwright-debug

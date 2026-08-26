@@ -1,10 +1,10 @@
 # Skill Install CLI Tests
 
-Doc-style tests for `skill --install` on the three repo skill CLIs (`go-best-practice`,
-`playwright-debug`, `github-fetch`). Covers dry-run output, global target resolution,
-real install side effects (nested `path/TOPIC.md` extras), backward-compatible
-top-level `install`, regression for `skill --show`, nested topic show orders, and
-error paths for missing/legacy action forms.
+Doc-style tests for `skill --install` on repo skill CLIs that still ship
+embedded skill content (`playwright-debug`, `github-fetch`). Covers dry-run
+output, global target resolution, real install side effects, and routing
+rules. `go-best-practice` install/show coverage lives in the standalone
+module https://github.com/xhd2015/go-best-practice (`tests/skill-install-cli`).
 
 # DSN (Domain Specific Notion)
 
@@ -16,7 +16,7 @@ Participants:
   classifies `--show` / `--install` / `--list` and remaining path/name/install flags.
 - Install resolves target directories (local `.agents/skills/<name>`, global
   `~/.agents/skills/<name>`, or explicit `<dir>`) and copies SKILL.md plus any
-  nested extra files (e.g. `cli/skill-cli/TOPIC.md` for go-best-practice Shape 3).
+  nested extra files.
 - Dry-run mode prints `[dry-run]` lines to stdout without writing files.
 - Legacy word forms (`skill show`, `skill install`) and bare paths under `skill`
   without an action flag are rejected.
@@ -25,19 +25,6 @@ Participants:
 
 ```text
 skill-install-cli/
-├── go-best-practice/
-│   ├── skill-install/
-│   │   ├── dry-run-default/
-│   │   ├── global-dry-run/
-│   │   └── includes-topics/          # nested cli/skill-cli/TOPIC.md (not topics/*.md)
-│   ├── skill-show-still-works/
-│   ├── skill-show-nested/
-│   │   ├── flag-before-path/
-│   │   └── path-before-flag/
-│   ├── bare-path-no-action/
-│   ├── legacy-skill-show/
-│   ├── top-level-install-alias/
-│   └── unknown-subcommand/           # skill with no action flags
 ├── playwright-debug/
 │   └── global-dry-run/
 └── github-fetch/
@@ -49,16 +36,6 @@ skill-install-cli/
 
 | Leaf | Description |
 |------|-------------|
-| `go-best-practice/skill-install/dry-run-default` | `skill --install --dry-run` mentions `.agents/skills/go-best-practice` |
-| `go-best-practice/skill-install/global-dry-run` | `skill --install --global --dry-run` resolves under `HOME` |
-| `go-best-practice/skill-install/includes-topics` | Real install copies `cli/skill-cli/TOPIC.md` with SKILL.md |
-| `go-best-practice/skill-show-still-works` | `skill --show` still prints skill name (regression) |
-| `go-best-practice/skill-show-nested/flag-before-path` | `skill --show cli/skill-cli` prints nested topic; name has `go-best-practice/cli/skill-cli` |
-| `go-best-practice/skill-show-nested/path-before-flag` | `skill cli/skill-cli --show` same nested content |
-| `go-best-practice/bare-path-no-action` | `skill cli/skill-cli` without action → error |
-| `go-best-practice/legacy-skill-show` | legacy `skill show` → error |
-| `go-best-practice/top-level-install-alias` | Top-level `install --dry-run` matches `skill --install --dry-run` |
-| `go-best-practice/unknown-subcommand` | `skill` alone (no action flags) errors with expected action hints |
 | `playwright-debug/global-dry-run` | Global dry-run mentions `playwright-debug` under `HOME` |
 | `github-fetch/global-dry-run` | Global dry-run mentions `github-fetch` under `HOME` |
 | `github-fetch/standalone-install-rejected` | Top-level `install` is unknown (must use `skill --install`) |
@@ -72,7 +49,7 @@ doctest test -v ./tests/skill-install-cli
 
 ## Version
 
-0.0.2
+0.0.3
 
 ```go
 import (
@@ -82,6 +59,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/xhd2015/doctest/session"
 )
 
 type Request struct {
@@ -100,7 +79,8 @@ type Response struct {
 	HomeDir  string
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	_ = d
 	if req.Binary == "" {
 		return nil, fmt.Errorf("CLI binary path is required")
 	}
@@ -109,30 +89,22 @@ func Run(t *testing.T, req *Request) (*Response, error) {
 	}
 
 	resp := &Response{}
+	env := append([]string{}, os.Environ()...)
+	env = append(env, "GOWORK=off")
 
+	cmd := exec.Command(req.Binary, req.Args...)
 	if req.UseWorkDir {
 		workDir := t.TempDir()
 		resp.WorkDir = workDir
-		prevWD, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		if err := os.Chdir(workDir); err != nil {
-			return nil, err
-		}
-		defer func() {
-			_ = os.Chdir(prevWD)
-		}()
+		cmd.Dir = workDir
 	}
-
 	if req.UseGlobalHome {
 		homeDir := t.TempDir()
 		resp.HomeDir = homeDir
-		t.Setenv("HOME", homeDir)
+		env = append(env, "HOME="+homeDir)
 	}
+	cmd.Env = env
 
-	cmd := exec.Command(req.Binary, req.Args...)
-	cmd.Env = append(os.Environ(), "GOWORK=off")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
