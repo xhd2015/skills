@@ -37,6 +37,14 @@ Behaviors:
 - Actions are **flags only** — no word subcommands `show` / `install`.
 - Both orders work: `--show <path>` and `<path> --show` (path lands in Rest).
 - Default install target: `.agents/skills/<SkillDirName>/`.
+- Explicit `--dir` / positional `<dir>`: smart layout via
+  `ResolveExplicitSkillDir` — basename `skills` always nests as
+  `<dir>/<name>`; existing `SKILL.md` or matching basename is the skill root;
+  otherwise nest. `--dir` is exclusive with `<dir>` and with
+  `--cursor/--codex/--opencode/--general-agents`.
+- Shape-3 `SingleSkill`: a known topic token before `--install` (show-style
+  order) is peeled when `--dir` or another positional destination is present;
+  install still copies the whole skill.
 - Nested install ExtraFiles use `path/TOPIC.md` (TreeFS load/list/collect), not
   nested `path/SKILL.md` and not `topics/*.md`. Nested `SKILL.md` if present in
   TreeFS is ignored for topic discovery.
@@ -64,6 +72,9 @@ skillcmd/
 │   ├── show-nested-path
 │   ├── reject-dotdot
 │   ├── install-extra-files
+│   ├── install-topic-before/      # <topic> --install peels topic
+│   │   ├── dir-flag
+│   │   └── positional
 │   └── list-topics
 ├── multi/                      # multi-skill host
 │   ├── list-skills
@@ -78,7 +89,13 @@ skillcmd/
 │   ├── get-header
 │   └── format-header
 └── install-compat/                # HandleInstall via skillcmd
-    └── fresh-default
+    ├── fresh-default
+    ├── positional-collection      # <dir> basename skills → nest
+    └── dir-flag/
+        ├── collection             # --dir …/skills → nest
+        ├── matching-basename      # --dir …/<name> → direct
+        ├── conflict-positional    # --dir + <dir> → error
+        └── conflict-cursor        # --dir + --cursor → error
 ```
 
 ## Test Index
@@ -101,6 +118,8 @@ skillcmd/
 | `single-tree/show-nested-path` | `--show a/b` prints nested TOPIC.md body |
 | `single-tree/reject-dotdot` | `--show ../x` errors on invalid segment |
 | `single-tree/install-extra-files` | install writes `skill-cli/TOPIC.md` (not nested SKILL.md / topics/*) |
+| `single-tree/install-topic-before/dir-flag` | `skill-cli --install --dir vendor/skills` peels topic |
+| `single-tree/install-topic-before/positional` | `skill-cli --install vendor/skills` peels topic |
 | `single-tree/list-topics` | `--list` lists skill name + topics from `**/TOPIC.md` |
 | `multi/list-skills` | `--list` lists registered names (+ description) |
 | `multi/show-by-name/flag-before-name` | `--show foo` prints foo content |
@@ -111,6 +130,11 @@ skillcmd/
 | `file-header/get-header` | GetHeader returns inner YAML without delimiters |
 | `file-header/format-header` | FormatHeaderWithDelimiters wraps with `---` |
 | `install-compat/fresh-default` | HandleInstall default dir succeeds under skillcmd |
+| `install-compat/positional-collection` | positional `vendor/skills` nests to `…/demo-skill` |
+| `install-compat/dir-flag/collection` | `--dir vendor/skills` nests; no collection-root SKILL.md |
+| `install-compat/dir-flag/matching-basename` | `--dir out/demo-skill` installs directly |
+| `install-compat/dir-flag/conflict-positional` | `--dir` + positional → error |
+| `install-compat/dir-flag/conflict-cursor` | `--dir` + `--cursor` → error |
 
 ## How to Run
 

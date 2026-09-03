@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/xhd2015/less-gen/flags"
+	lessflags "github.com/xhd2015/less-flags"
 )
 
 type InstallOptions struct {
@@ -37,7 +37,7 @@ func HandleInstall(opts InstallOptions, args []string) error {
 	var tf TargetFlags
 	var noOverride bool
 	var force bool
-	args, err := flags.Bool("--dry-run", &dryRun).
+	args, err := lessflags.Bool("--dry-run", &dryRun).
 		Bool("--cursor", &tf.Cursor).
 		Bool("--codex", &tf.Codex).
 		Bool("--opencode", &tf.Opencode).
@@ -45,6 +45,7 @@ func HandleInstall(opts InstallOptions, args []string) error {
 		Bool("--no-override", &noOverride).
 		Bool("--force", &force).
 		Bool("--global", &tf.Global).
+		String("--dir", &tf.Dir).
 		Help("-h,--help", fmt.Sprintf(`
 Usage: %s [OPTIONS] [<dir>]
 
@@ -52,6 +53,11 @@ Install skill SKILL.md to a directory.
 When no <dir> or target flag is provided, install to .agents/skills/%s.
 
 Options:
+  --dir DIR    Explicit destination (smart layout). Exclusive with <dir> and
+               with --cursor/--codex/--opencode/--general-agents.
+               If basename is "skills", installs to DIR/%s/; if DIR already has
+               SKILL.md or basename matches the skill name, DIR is the skill
+               root; otherwise nests as DIR/%s/.
   --cursor     Install to .cursor/skills/%s (no dir argument needed)
   --codex      Install to .codex/skills/%s (no dir argument needed)
   --opencode   Install to .opencode/skills/%s (no dir argument needed)
@@ -63,7 +69,7 @@ Options:
   --dry-run    Show what would be created without actually creating anything
 
 Multiple --cursor/--codex/--opencode/--general-agents flags can be combined to install to several locations at once.
-`, usage, skillDirName, skillDirName, skillDirName, skillDirName, skillDirName)).Parse(args)
+`, usage, skillDirName, skillDirName, skillDirName, skillDirName, skillDirName, skillDirName, skillDirName)).Parse(args)
 	if err != nil {
 		return err
 	}

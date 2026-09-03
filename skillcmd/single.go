@@ -34,14 +34,17 @@ func DefaultSingleSkillHelp(usage, skillName string) string {
        skill <topic-path> --show [--header]
        skill --version
        skill --install [OPTIONS] [<dir>]
+       skill <topic-path> --install [OPTIONS] [<dir>]
        skill --list
 
 Show the embedded SKILL.md (root) or a nested topic path (path/TOPIC.md).
 Install copies SKILL.md (and nested TOPIC.md topics) to agent skill directories.
+A leading <topic-path> before --install is ignored for destination (whole skill
+is installed); use --dir or <dir> for the target.
 List prints the skill name (%s); when nested topics exist, also lists all topic paths.
 
 Install usage: %s [OPTIONS] [<dir>]
-  Run skill --install --help for install flags (--global, --cursor, …).
+  Run skill --install --help for install flags (--global, --cursor, --dir, …).
 
 Options:
   --show [--header] [path]   Print skill or topic content
@@ -155,6 +158,10 @@ func (s *SingleSkill) loadContent(rest []string) (string, error) {
 }
 
 func (s *SingleSkill) handleInstall(rest []string) error {
+	rest, err := s.peelLeadingTopicForInstall(rest)
+	if err != nil {
+		return err
+	}
 	extras, err := s.extraFilesForInstall()
 	if err != nil {
 		return err
@@ -169,6 +176,61 @@ func (s *SingleSkill) handleInstall(rest []string) error {
 		ExtraFiles:   extras,
 		Usage:        usage,
 	}, rest)
+}
+
+// peelLeadingTopicForInstall drops a known TreeFS topic from Rest when the
+// caller used show-style order (`skill <topic> --install …`) and also supplied
+// an install destination (--dir or another positional). Install always copies
+// the whole skill; the topic token is not a destination.
+//
+// If the only non-flag token is a topic name and --dir is absent, it is left
+// alone so `skill --install <dir>` can still use a directory whose basename
+// happens to match a topic.
+func (s *SingleSkill) peelLeadingTopicForInstall(rest []string) ([]string, error) {
+	if s.TreeFS == nil || len(rest) == 0 {
+		return rest, nil
+	}
+	topics, err := ListTreeTopics(s.TreeFS)
+	if err != nil {
+		return nil, err
+	}
+	known := make(map[string]struct{}, len(topics))
+	for _, t := range topics {
+		known[t] = struct{}{}
+	}
+
+	topicIdx := -1
+	hasDirFlag := false
+	otherPositionals := 0
+	for i := 0; i < len(rest); i++ {
+		arg := rest[i]
+		if arg == "--dir" {
+			hasDirFlag = true
+			// skip flag value if present
+			if i+1 < len(rest) && !strings.HasPrefix(rest[i+1], "-") {
+				i++
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		cand := strings.Trim(arg, "/")
+		if topicIdx < 0 {
+			if _, ok := known[cand]; ok {
+				topicIdx = i
+				continue
+			}
+		}
+		otherPositionals++
+	}
+	if topicIdx < 0 || (!hasDirFlag && otherPositionals == 0) {
+		return rest, nil
+	}
+	out := make([]string, 0, len(rest)-1)
+	out = append(out, rest[:topicIdx]...)
+	out = append(out, rest[topicIdx+1:]...)
+	return out, nil
 }
 
 func (s *SingleSkill) extraFilesForInstall() ([]InstallFile, error) {

@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/xhd2015/dot-pkgs/go-pkgs/terminal/color"
-	"github.com/xhd2015/less-gen/flags"
+	lessflags "github.com/xhd2015/less-flags"
 )
 
 // UpdateSkill describes one entry in a multi-skill registry.
@@ -26,12 +27,58 @@ type TargetFlags struct {
 	Opencode      bool
 	GeneralAgents bool
 	Global        bool
+	// Dir is --dir: explicit destination (smart layout). Exclusive with
+	// positional <dir> and with --cursor/--codex/--opencode/--general-agents.
+	Dir string
+}
+
+// ResolveExplicitSkillDir maps an explicit install/update directory to the
+// skill root path (where SKILL.md lives).
+//
+// Rules (in order):
+//  1. basename(dir) == "skills" → always a collection → dir/<skillName>
+//  2. dir/SKILL.md exists → dir is already the skill root
+//  3. basename(dir) == skillName → dir is the skill root
+//  4. otherwise → nest as dir/<skillName>
+func ResolveExplicitSkillDir(skillName, dir string) (string, error) {
+	if skillName == "" {
+		return "", fmt.Errorf("skill directory name is required")
+	}
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return "", fmt.Errorf("directory is required")
+	}
+	base := filepath.Base(filepath.Clean(dir))
+	if base == "skills" {
+		return filepath.Join(dir, skillName), nil
+	}
+	if IsInstalled(dir) {
+		return dir, nil
+	}
+	if base == skillName {
+		return dir, nil
+	}
+	return filepath.Join(dir, skillName), nil
 }
 
 // ResolveTargetDirs maps target flags and optional positional <dir> to filesystem paths.
 func ResolveTargetDirs(skillDirName string, tf TargetFlags, args []string) ([]string, error) {
 	if skillDirName == "" {
 		return nil, fmt.Errorf("skill directory name is required")
+	}
+
+	explicitDir := strings.TrimSpace(tf.Dir)
+	hasPreset := tf.Cursor || tf.Codex || tf.Opencode || tf.GeneralAgents
+	hasPositional := len(args) > 0
+
+	if explicitDir != "" && hasPositional {
+		return nil, fmt.Errorf("specify directory with --dir or as <dir>, not both")
+	}
+	if explicitDir != "" && hasPreset {
+		return nil, fmt.Errorf("--dir cannot be combined with --cursor/--codex/--opencode/--general-agents")
+	}
+	if hasPositional && len(args) > 1 {
+		return nil, fmt.Errorf("unexpected arguments: %s", strings.Join(args[1:], " "))
 	}
 
 	var dirs []string
@@ -48,9 +95,20 @@ func ResolveTargetDirs(skillDirName string, tf TargetFlags, args []string) ([]st
 		dirs = append(dirs, joinSkillDir(".agents", skillDirName))
 	}
 	if len(dirs) == 0 {
-		if len(args) > 0 {
-			dirs = append(dirs, args[0])
-		} else {
+		switch {
+		case explicitDir != "":
+			resolved, err := ResolveExplicitSkillDir(skillDirName, explicitDir)
+			if err != nil {
+				return nil, err
+			}
+			dirs = append(dirs, resolved)
+		case hasPositional:
+			resolved, err := ResolveExplicitSkillDir(skillDirName, args[0])
+			if err != nil {
+				return nil, err
+			}
+			dirs = append(dirs, resolved)
+		default:
 			dirs = append(dirs, joinSkillDir(".agents", skillDirName))
 		}
 	}
@@ -98,7 +156,7 @@ func HandleUpdate(opts InstallOptions, args []string) error {
 func handleUpdate(w io.Writer, opts InstallOptions, args []string) error {
 	tf, dryRun, colorMode, args, err := parseUpdateFlags(opts, args)
 	if err != nil {
-		if errors.Is(err, flags.ErrHelp) {
+		if errors.Is(err, lessflags.ErrHelp) {
 			return nil
 		}
 		return err
@@ -141,7 +199,7 @@ func handleUpdateMany(w io.Writer, skills []UpdateSkill, args []string) error {
 	}
 	tf, dryRun, colorMode, args, err := parseUpdateFlags(InstallOptions{Usage: usage}, args)
 	if err != nil {
-		if errors.Is(err, flags.ErrHelp) {
+		if errors.Is(err, lessflags.ErrHelp) {
 			return nil
 		}
 		return err
@@ -301,12 +359,13 @@ func parseUpdateFlags(opts InstallOptions, args []string) (TargetFlags, bool, co
 	var tf TargetFlags
 	var dryRun bool
 	var colorFlag, noColorFlag bool
-	args, err := flags.Bool("--dry-run", &dryRun).
+	args, err := lessflags.Bool("--dry-run", &dryRun).
 		Bool("--cursor", &tf.Cursor).
 		Bool("--codex", &tf.Codex).
 		Bool("--opencode", &tf.Opencode).
 		Bool("--general-agents", &tf.GeneralAgents).
 		Bool("--global", &tf.Global).
+		String("--dir", &tf.Dir).
 		Bool("--color", &colorFlag).
 		Bool("--no-color", &noColorFlag).
 		Help("-h,--help", fmt.Sprintf(`
@@ -316,6 +375,9 @@ Update an already-installed skill (SKILL.md must exist at target paths).
 When no <dir> or target flag is provided, update .agents/skills/%s.
 
 Options:
+  --dir DIR    Explicit destination (smart layout). Exclusive with <dir> and
+               with --cursor/--codex/--opencode/--general-agents. Same nesting
+               rules as skill --install --dir.
   --cursor     Update .cursor/skills/%s when installed
   --codex      Update .codex/skills/%s when installed
   --opencode   Update .opencode/skills/%s when installed

@@ -1,15 +1,18 @@
 # Scenario
 
-**Feature**: skillcmd.HandleInstall performs default-target installs
+**Feature**: skillcmd.HandleInstall default and explicit `--dir` / `<dir>` targets
 
 ```
 # install API lives in skillcmd (install package becomes a shim)
 caller -> skillcmd.HandleInstall(opts, args) -> .agents/skills/<name>/
+caller -> HandleInstall(--dir <collection>) -> <collection>/<name>/
 ```
 
 ## Preconditions
 
 - Isolated work directory for filesystem side effects.
+- Explicit `--dir` / positional `<dir>` use smart layout (basename `skills`
+  nests; existing `SKILL.md` or matching basename is direct).
 
 ## Steps
 
