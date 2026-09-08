@@ -38,6 +38,8 @@ func BuildRunPlan(opts RunOptions) (RunPlanResult, error) {
 		return RunPlanResult{Error: err.Error()}, err
 	}
 
+	opts.PlaywrightVersion = applyResolvedPlaywrightVersion(opts.PlaywrightVersion, opts.Stderr)
+
 	cacheDir, err := VersionedCacheDir(opts.CacheDir, opts.PlaywrightVersion)
 	if err != nil {
 		return RunPlanResult{Error: err.Error()}, err
@@ -131,16 +133,18 @@ func EnsurePlaywright(cacheDir string, stdout, stderr io.Writer) (string, error)
 // explicitly requested package version, and repairs a missing Chromium
 // executable left by an interrupted browser download.
 func EnsurePlaywrightVersion(cacheDir, version string, stdout, stderr io.Writer) (string, error) {
-	var err error
-	cacheDir, err = VersionedCacheDir(cacheDir, version)
-	if err != nil {
-		return "", err
-	}
 	if stdout == nil {
 		stdout = os.Stdout
 	}
 	if stderr == nil {
 		stderr = os.Stderr
+	}
+	version = applyResolvedPlaywrightVersion(version, stderr)
+
+	var err error
+	cacheDir, err = VersionedCacheDir(cacheDir, version)
+	if err != nil {
+		return "", err
 	}
 
 	if playwrightReady(cacheDir, version) {
