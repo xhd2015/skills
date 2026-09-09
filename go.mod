@@ -3,8 +3,8 @@ module github.com/xhd2015/skills
 go 1.25.10
 
 require (
-	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.123
-	github.com/xhd2015/less-flags v1.0.2
+	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.170
+	github.com/xhd2015/less-flags v1.0.5
 	golang.org/x/mod v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
