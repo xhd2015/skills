@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -130,8 +131,9 @@ func EnsurePlaywright(cacheDir string, stdout, stderr io.Writer) (string, error)
 }
 
 // EnsurePlaywrightVersion initializes the npm package cache, enforces an
-// explicitly requested package version, and repairs a missing Chromium
-// executable left by an interrupted browser download.
+// explicitly requested package version, repairs a missing Chromium executable
+// left by an interrupted browser download, and on Linux installs OS shared
+// libraries required to launch Chromium (playwright install-deps).
 func EnsurePlaywrightVersion(cacheDir, version string, stdout, stderr io.Writer) (string, error) {
 	if stdout == nil {
 		stdout = os.Stdout
@@ -195,8 +197,50 @@ func chromiumExecutableExists(cacheDir string) bool {
 	return cmd.Run() == nil
 }
 
+// needsChromiumOSDeps is true on Linux, where Chromium needs apt-installed
+// shared libraries (libatk, etc.). Overridable in tests.
+var needsChromiumOSDeps = func() bool { return runtime.GOOS == "linux" }
+
+// chromiumHostDepsOK reports whether Chromium can load on this host.
+// Non-Linux always OK. Overridable in tests.
+var chromiumHostDepsOK = defaultChromiumHostDepsOK
+
+func defaultChromiumHostDepsOK(cacheDir string) bool {
+	if !needsChromiumOSDeps() {
+		return true
+	}
+	return smokeChromiumLoads(cacheDir)
+}
+
+// smokeChromiumLoads resolves the Playwright Chromium binary and probes it.
+// Missing shared libraries typically yield exit 127 from the dynamic linker.
+func smokeChromiumLoads(cacheDir string) bool {
+	const pathScript = `const {chromium}=require("playwright");const p=chromium.executablePath();if(!p)process.exit(1);process.stdout.write(p)`
+	cmd := exec.Command("node", "-e", pathScript)
+	cmd.Dir = cacheDir
+	cmd.Env = PlaywrightEnv(cacheDir)
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	exe := strings.TrimSpace(string(out))
+	if exe == "" {
+		return false
+	}
+	if _, err := os.Stat(exe); err != nil {
+		return false
+	}
+	probe := exec.Command(exe, "--version")
+	probe.Dir = cacheDir
+	return probe.Run() == nil
+}
+
+func chromiumReady(cacheDir string) bool {
+	return chromiumExecutableExists(cacheDir) && chromiumHostDepsOK(cacheDir)
+}
+
 func playwrightReady(cacheDir, version string) bool {
-	return playwrightPackageMatches(cacheDir, version) && chromiumExecutableExists(cacheDir)
+	return playwrightPackageMatches(cacheDir, version) && chromiumReady(cacheDir)
 }
 
 func ensurePlaywrightLocked(cacheDir, version string, stdout, stderr io.Writer) error {
@@ -258,7 +302,127 @@ func ensurePlaywrightLocked(cacheDir, version string, stdout, stderr io.Writer) 
 		return fmt.Errorf("Playwright Chromium executable is missing after installation")
 	}
 
+	if needsChromiumOSDeps() && !chromiumHostDepsOK(cacheDir) {
+		fmt.Fprintln(stdout, "Installing Chromium OS dependencies (playwright install-deps)...")
+		cmd := exec.Command("npm", "exec", "--", "playwright", "install-deps", "chromium")
+		cmd.Dir = cacheDir
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		env, err := installDepsEnv(cacheDir)
+		if err != nil {
+			return err
+		}
+		cmd.Env = env
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("install OS dependencies for Chromium failed (apt may need root/sudo; ensure uses Check-Valid-Until=false and Debian main-only sources to avoid flaky security.debian.org 404s). Fix: cd %s && npm exec -- playwright install-deps chromium: %w", cacheDir, err)
+		}
+		if !chromiumHostDepsOK(cacheDir) {
+			return fmt.Errorf("Chromium still cannot load after install-deps (missing shared libraries?). Fix: cd %s && npm exec -- playwright install-deps chromium", cacheDir)
+		}
+	}
+
 	return nil
+}
+
+func aptInstallDepsConfPath(cacheDir string) string {
+	return filepath.Join(cacheDir, ".playwright-debug-apt.conf")
+}
+
+func aptMainOnlySourcesPath(cacheDir string) string {
+	return filepath.Join(cacheDir, ".playwright-debug-apt-sources.list")
+}
+
+func aptEmptySourcePartsDir(cacheDir string) string {
+	return filepath.Join(cacheDir, ".playwright-debug-apt-sourceparts")
+}
+
+// ensureAptInstallDepsConf writes APT_CONFIG (+ optional Debian main-only
+// sources) so install-deps can ignore expired Valid-Until and skip flaky
+// security.debian.org CDN 404s.
+func ensureAptInstallDepsConf(cacheDir string) (string, error) {
+	var b strings.Builder
+	b.WriteString("Acquire::Check-Valid-Until \"false\";\n")
+
+	if host := lookupHostOS(); strings.EqualFold(strings.TrimSpace(host.ID), "debian") {
+		sourcesPath, err := ensureDebianMainOnlySources(cacheDir, host)
+		if err != nil {
+			return "", err
+		}
+		partsDir := aptEmptySourcePartsDir(cacheDir)
+		if err := os.MkdirAll(partsDir, 0o755); err != nil {
+			return "", fmt.Errorf("create empty apt sourceparts dir: %w", err)
+		}
+		fmt.Fprintf(&b, "Dir::Etc::sourcelist \"%s\";\n", sourcesPath)
+		fmt.Fprintf(&b, "Dir::Etc::sourceparts \"%s\";\n", partsDir)
+	}
+
+	path := aptInstallDepsConfPath(cacheDir)
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		return "", fmt.Errorf("write apt conf for install-deps: %w", err)
+	}
+	return path, nil
+}
+
+func ensureDebianMainOnlySources(cacheDir string, host HostOS) (string, error) {
+	codename := strings.TrimSpace(host.VersionCodename)
+	if codename == "" {
+		codename = debianCodenameForVersionID(host.VersionID)
+	}
+	if codename == "" {
+		return "", fmt.Errorf("cannot derive Debian codename for VERSION_ID=%q", host.VersionID)
+	}
+	// Main + updates only — no security.debian.org (Fastly edges often 404
+	// bullseye-security pool files while indexes still list them).
+	body := fmt.Sprintf(
+		"deb http://deb.debian.org/debian %s main\ndeb http://deb.debian.org/debian %s-updates main\n",
+		codename, codename,
+	)
+	path := aptMainOnlySourcesPath(cacheDir)
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		return "", fmt.Errorf("write main-only apt sources: %w", err)
+	}
+	return path, nil
+}
+
+func debianCodenameForVersionID(versionID string) string {
+	switch strings.TrimSpace(versionID) {
+	case "11":
+		return "bullseye"
+	case "12":
+		return "bookworm"
+	case "13":
+		return "trixie"
+	default:
+		return ""
+	}
+}
+
+// installDepsEnv is the process env for playwright install-deps: PlaywrightEnv
+// plus DEBIAN_FRONTEND and APT_CONFIG (Valid-Until bypass; Debian main-only).
+func installDepsEnv(cacheDir string) ([]string, error) {
+	aptConf, err := ensureAptInstallDepsConf(cacheDir)
+	if err != nil {
+		return nil, err
+	}
+	env := PlaywrightEnv(cacheDir)
+	env = unsetEnvKey(env, "APT_CONFIG")
+	env = unsetEnvKey(env, "DEBIAN_FRONTEND")
+	return append(env,
+		"APT_CONFIG="+aptConf,
+		"DEBIAN_FRONTEND=noninteractive",
+	), nil
+}
+
+func unsetEnvKey(env []string, key string) []string {
+	prefix := key + "="
+	out := make([]string, 0, len(env))
+	for _, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 // PlaywrightEnv returns process environment with NODE_PATH set for the cache directory.

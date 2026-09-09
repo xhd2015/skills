@@ -7,19 +7,19 @@ import (
 )
 
 func TestParseOSRelease(t *testing.T) {
-	id, ver := parseOSRelease(strings.NewReader(`PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+	id, ver, codename := parseOSRelease(strings.NewReader(`PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
 NAME="Debian GNU/Linux"
 VERSION_ID="11"
 ID=debian
 VERSION_CODENAME=bullseye
 `))
-	if id != "debian" || ver != "11" {
-		t.Fatalf("parseOSRelease = %q %q, want debian 11", id, ver)
+	if id != "debian" || ver != "11" || codename != "bullseye" {
+		t.Fatalf("parseOSRelease = %q %q %q, want debian 11 bullseye", id, ver, codename)
 	}
 
-	id, ver = parseOSRelease(strings.NewReader("ID=ubuntu\nVERSION_ID=22.04\n"))
-	if id != "ubuntu" || ver != "22.04" {
-		t.Fatalf("parseOSRelease ubuntu = %q %q", id, ver)
+	id, ver, codename = parseOSRelease(strings.NewReader("ID=ubuntu\nVERSION_ID=22.04\n"))
+	if id != "ubuntu" || ver != "22.04" || codename != "" {
+		t.Fatalf("parseOSRelease ubuntu = %q %q %q", id, ver, codename)
 	}
 }
 

@@ -15,9 +15,10 @@ const LastDebian11PlaywrightVersion = "1.61.0"
 
 // HostOS is the host identity used to pick a default Playwright version.
 type HostOS struct {
-	ID        string
-	VersionID string
-	Arch      string
+	ID             string
+	VersionID      string
+	VersionCodename string // e.g. bullseye (from VERSION_CODENAME)
+	Arch           string
 }
 
 func (h HostOS) IsDebian11Amd64() bool {
@@ -38,22 +39,23 @@ func detectHostOS() HostOS {
 	}.withRelease(readOSReleaseFile("/etc/os-release"))
 }
 
-func (h HostOS) withRelease(id, versionID string) HostOS {
+func (h HostOS) withRelease(id, versionID, versionCodename string) HostOS {
 	h.ID = id
 	h.VersionID = versionID
+	h.VersionCodename = versionCodename
 	return h
 }
 
-func readOSReleaseFile(path string) (id, versionID string) {
+func readOSReleaseFile(path string) (id, versionID, versionCodename string) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	defer f.Close()
 	return parseOSRelease(f)
 }
 
-func parseOSRelease(r io.Reader) (id, versionID string) {
+func parseOSRelease(r io.Reader) (id, versionID, versionCodename string) {
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -70,9 +72,11 @@ func parseOSRelease(r io.Reader) (id, versionID string) {
 			id = val
 		case "VERSION_ID":
 			versionID = val
+		case "VERSION_CODENAME":
+			versionCodename = val
 		}
 	}
-	return id, versionID
+	return id, versionID, versionCodename
 }
 
 // ResolvePlaywrightVersion returns the Playwright package version to install.
